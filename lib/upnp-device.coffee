@@ -1,15 +1,23 @@
 xml = require 'xml'
 
-buildSchema = (config, callback) ->
+buildNSURN = (config, callback) ->
     major = config['version'].split('.')[0]
     minor = config['version'].split('.')[1]
-    schema = 'urn:schemas-upnp-org:device-' + major + '-' + minor
-    callback xml.Element { _attr: { xmlns: schema } }
+    ns = config['upnp_urn'] + ':device-'
+    ns += major + '-' + minor
+    callback xml.Element { _attr: { xmlns: ns } }
 
 buildSpecVersion = (config, callback) ->
     major = config['version'].split('.')[0]
     minor = config['version'].split('.')[1]
     callback xml.Element [ { major: major }, { minor: minor } ]
 
-exports.buildSchema = buildSchema
+buildDevice = (config, callback) ->
+    type = config['upnp_urn'] + ':device:'
+    type += config['type'] + ':'
+    type += config['version'].split('.')[0]
+    callback type
+
+exports.buildNSURN = buildNSURN
 exports.buildSpecVersion = buildSpecVersion
+exports.buildDevice = buildDevice
