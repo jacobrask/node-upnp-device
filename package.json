@@ -1,0 +1,10 @@
+{
+    "name": "bragi",
+    "version": "0.0.1",
+    "description": "UPnP AV / DLNA Media Server",
+    "dependencies": {
+        "xml": ">=0.0.5"
+    }, 
+    "author": "Jacob Rask (http://jacobrask.net)",
+    "main": "index.coffee"
+}
