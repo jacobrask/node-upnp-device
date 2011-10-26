@@ -1,14 +1,14 @@
 xml = require 'xml'
 
-buildSchema = (version, callback) ->
-    major = version.split('.')[0]
-    minor = version.split('.')[1]
+buildSchema = (config, callback) ->
+    major = config['version'].split('.')[0]
+    minor = config['version'].split('.')[1]
     schema = 'urn:schemas-upnp-org:device-' + major + '-' + minor
     callback xml.Element { _attr: { xmlns: schema } }
 
-buildSpecVersion = (version, callback) ->
-    major = version.split('.')[0]
-    minor = version.split('.')[1]
+buildSpecVersion = (config, callback) ->
+    major = config['version'].split('.')[0]
+    minor = config['version'].split('.')[1]
     callback xml.Element [ { major: major }, { minor: minor } ]
 
 exports.buildSchema = buildSchema
