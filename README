@@ -6,3 +6,5 @@ First steps:
     a separate module.
  2. Get a UPnP MediaServer up and running with Bragi.
  3. Implement UPnP ContentDirectory.
+
+Licensed under the MIT license (see LICENSE file).
