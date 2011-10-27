@@ -12,27 +12,25 @@ exports.buildDescription = (response, config, callback) ->
     extend config, configDefaults
 
     # generate namespace string
-    genNS = (callback) ->
+    genNS = ->
         ns = [
             config['device']['schema']['prefix']
             config['device']['version'].split('.')[0]
             config['device']['version'].split('.')[1]
         ]
-        ns = ns.join('-')
-        callback ns
+        ns.join('-')
     
     # build spec version element
-    buildSpecVersion = (callback) ->
+    buildSpecVersion = ->
         major = config['device']['version'].split('.')[0]
         minor = config['device']['version'].split('.')[1]
-        specVersion = [
+        [
             { major: major }
             { minor: minor }
         ]
-        callback specVersion
 
     # build device element
-    buildDevice = (callback) ->
+    buildDevice = ->
         type = [
             config['device']['schema']['prefix']
             config['device']['type']
@@ -43,23 +41,20 @@ exports.buildDescription = (response, config, callback) ->
         url = config['app']['url']
         version = config['app']['version']
         udn = 'uuid:' + config['uuid']
-        d = []
-        d.push { deviceType: type }
-        d.push { friendlyName: name }
-        d.push { manufacturer: name }
-        d.push { modelName: name + ' Media Server' }
-        d.push { UDN: udn }
-        callback d
+        [
+            { deviceType: type }
+            { friendlyName: name }
+            { manufacturer: name }
+            { modelName: name + ' Media Server' }
+            { UDN: udn }
+        ]
 
-    genNS (xmlns) ->
-        root = xml.Element { _attr: { xmlns: xmlns } }
-        desc = xml { root: root }, { stream: true }
-        desc.pipe response
+    root = xml.Element { _attr: { xmlns: genNS() } }
+    desc = xml { root: root }, { stream: true }
+    desc.pipe response
 
-        process.nextTick ->
-            buildSpecVersion (specVersionEl) ->
-                root.push { specVersion: specVersionEl }
-                buildDevice (deviceEl) ->
-                    root.push { device: deviceEl }
-                    root.close()
-                    callback()
+    process.nextTick ->
+        root.push { specVersion: buildSpecVersion() }
+        root.push { device: buildDevice() }
+        root.close()
+        callback()
