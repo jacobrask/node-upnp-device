@@ -1,10 +1,3 @@
-Bragi intends to implement a UPnP AV / DLNA Media Server in Node.js.
-
-First steps:
-
- 1. Implement a generic UPnP Device description renderer, most likely in
-    a separate module.
- 2. Get a UPnP MediaServer up and running with Bragi.
- 3. Implement UPnP ContentDirectory.
+UPnP Devices in Node.js.
 
 Licensed under the MIT license (see LICENSE file).

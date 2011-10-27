@@ -1,7 +1,7 @@
 {
-    "name": "bragi",
+    "name": "upnp",
     "version": "0.0.1",
-    "description": "UPnP AV / DLNA Media Server",
+    "description": "Create UPnP devices.",
     "dependencies": {
         "xml": ">=0.0.5",
         "http": ">=0.0.0"
