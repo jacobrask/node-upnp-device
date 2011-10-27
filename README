@@ -1,3 +1,6 @@
 UPnP Devices in Node.js.
 
+Currently only this works:
+ * Generate UPnP Device description
+
 Licensed under the MIT license (see LICENSE file).

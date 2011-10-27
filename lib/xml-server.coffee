@@ -1,6 +1,6 @@
 http = require 'http'
 url = require 'url'
-device = require './upnp-device'
+device = require './device'
 
 handle =
     '/description.xml': device.buildDescription
