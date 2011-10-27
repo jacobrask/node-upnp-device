@@ -4,7 +4,8 @@
     "description": "Create UPnP devices.",
     "dependencies": {
         "xml": ">=0.0.5",
-        "http": ">=0.0.0"
+        "http": ">=0.0.0",
+        "node-uuid": ">=1.2.0"
     }, 
     "author": "Jacob Rask (http://jacobrask.net)",
     "main": "index.coffee"

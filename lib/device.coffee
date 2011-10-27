@@ -1,12 +1,13 @@
 extend = require('./helpers').extend
 xml = require 'xml'
+uuid = require 'node-uuid'
 
 # merged with configs passed when loading module
 configDefaults =
     device:
         schema:
             prefix: 'urn:schemas-upnp-org:device'
-    uuid: '4061a4c0-0020-11e1-be50-0800200c9a66'
+    uuid: uuid()
 
 exports.buildDescription = (response, config, callback) ->
     extend config, configDefaults
