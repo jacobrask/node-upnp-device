@@ -18,8 +18,17 @@ exports.buildDescription = (response, config, callback) ->
             config['device']['version'].split('.')[0]
             config['device']['version'].split('.')[1]
         ]
-        ns.join('-')
-    
+        ns.join '-'
+
+    # generate device type string
+    genDeviceType = ->
+        type = [
+            config['device']['schema']['prefix']
+            config['device']['type']
+            config['device']['version'].split('.')[0]
+        ]
+        type.join ':'
+
     # build spec version element
     buildSpecVersion = ->
         major = config['device']['version'].split('.')[0]
@@ -31,18 +40,12 @@ exports.buildDescription = (response, config, callback) ->
 
     # build device element
     buildDevice = ->
-        type = [
-            config['device']['schema']['prefix']
-            config['device']['type']
-            config['device']['version'].split('.')[0]
-        ]
-        type = type.join(':')
         name = config['app']['name']
         url = config['app']['url']
         version = config['app']['version']
         udn = 'uuid:' + config['uuid']
         [
-            { deviceType: type }
+            { deviceType: genDeviceType() }
             { friendlyName: name }
             { manufacturer: name }
             { modelName: name + ' Media Server' }
