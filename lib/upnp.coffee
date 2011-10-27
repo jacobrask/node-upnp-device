@@ -3,8 +3,9 @@ ssdpServer = require './ssdp-server'
 device = require './device'
 
 upnp = {}
-upnp.start = ->
-    xmlServer.start ->
+upnp.start = (config, callback) ->
+    xmlServer.start config, ->
         console.log 'xml server started'
+        callback()
 
 module.exports = upnp
