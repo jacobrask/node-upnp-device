@@ -1,5 +1,5 @@
 {
-    "name": "upnp-server",
+    "name": "upnp-device",
     "version": "0.0.1",
     "description": "Create UPnP devices.",
     "dependencies": {
@@ -8,5 +8,5 @@
         "node-uuid": ">=1.2.0"
     }, 
     "author": "Jacob Rask (http://jacobrask.net)",
-    "main": "index.coffee"
+    "main": "./lib/upnp"
 }
