@@ -1,16 +1,16 @@
-extend = require('./helpers').extend
 xml = require 'xml'
-uuid = require 'node-uuid'
 
-# merged with configs passed when loading module
-configDefaults =
-    device:
-        schema:
-            prefix: 'urn:schemas-upnp-org:device'
-    uuid: uuid()
+# generate device type string
+genDeviceType = (config) ->
+    type = [
+        config['device']['schema']['prefix']
+        config['device']['type']
+        config['device']['version'].split('.')[0]
+    ]
+    type.join ':'
 
-exports.buildDescription = (response, config, callback) ->
-    extend config, configDefaults
+# build device description element
+buildDescription = (response, config, callback) ->
 
     # generate namespace string
     genNS = ->
@@ -20,15 +20,6 @@ exports.buildDescription = (response, config, callback) ->
             config['device']['version'].split('.')[1]
         ]
         ns.join '-'
-
-    # generate device type string
-    genDeviceType = ->
-        type = [
-            config['device']['schema']['prefix']
-            config['device']['type']
-            config['device']['version'].split('.')[0]
-        ]
-        type.join ':'
 
     # build spec version element
     buildSpecVersion = ->
@@ -46,7 +37,7 @@ exports.buildDescription = (response, config, callback) ->
         version = config['app']['version']
         udn = 'uuid:' + config['uuid']
         [
-            { deviceType: genDeviceType() }
+            { deviceType: genDeviceType(config) }
             { friendlyName: name }
             { manufacturer: name }
             { modelName: name + ' Media Server' }
@@ -61,4 +52,7 @@ exports.buildDescription = (response, config, callback) ->
         root.push { specVersion: buildSpecVersion() }
         root.push { device: buildDevice() }
         root.close()
-        callback()
+        callback null
+
+exports.buildDescription = buildDescription
+exports.genDeviceType = genDeviceType

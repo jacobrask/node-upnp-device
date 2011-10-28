@@ -1,5 +1,5 @@
 {
-    "name": "upnp",
+    "name": "upnp-server",
     "version": "0.0.1",
     "description": "Create UPnP devices.",
     "dependencies": {
