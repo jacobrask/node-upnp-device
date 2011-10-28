@@ -1,7 +1,7 @@
 xml = require 'xml'
 
 # generate device type string
-genDeviceType = (config) ->
+makeDeviceType = (config) ->
     type = [
         config['device']['schema']['prefix']
         config['device']['type']
@@ -55,4 +55,4 @@ buildDescription = (response, config, callback) ->
         callback null
 
 exports.buildDescription = buildDescription
-exports.genDeviceType = genDeviceType
+exports.makeDeviceType = makeDeviceType
