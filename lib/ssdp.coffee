@@ -1,6 +1,12 @@
 dgram = require 'dgram'
 url = require 'url'
+event = require('events').EventEmitter
 device = require './device'
+
+event = new event
+
+event.on 'ssdpMsg', (msg) ->
+    console.log msg
 
 # Initializes a UPnP Device
 start = (config, callback) ->
@@ -21,7 +27,7 @@ start = (config, callback) ->
                 protocol: 'http:'
                 hostname: config['network']['http']['address']
                 port: config['network']['http']['port']
-                pathname: '/description.xml'
+                pathname: '/devices/root.xml'
             )
 
         # possible headers and values
@@ -54,8 +60,10 @@ start = (config, callback) ->
         message.push '\r\n'
         message.join '\r\n'
 
+
     ssdpSend = (socket, message, callback) ->
         socket.send message, 0, message.length, config['network']['ssdp']['port'], config['network']['ssdp']['address'], (err) ->
+            event.emit 'ssdpMsg', "SSDP message sent on port #{socket.address().port}"
             callback err
 
     makeAdvDelay = ->
@@ -84,7 +92,6 @@ start = (config, callback) ->
 
     advertise (err, port) ->
         setInterval advertise, makeAdvDelay(), (err, port) ->
-            callback err, "UPnP Device #{config['device']['uuid']} advertised on port #{port}"
-        callback err, "UPnP Device #{config['device']['uuid']} advertised on port #{port}"
+            callback err
 
 exports.start = start
