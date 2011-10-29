@@ -58,6 +58,12 @@ start = (config, callback) ->
         socket.send message, 0, message.length, config['network']['ssdp']['port'], config['network']['ssdp']['address'], (err) ->
             callback err
 
+    makeAdvDelay = ->
+        # recommended delay between advertisements is a random interval of less than half of timeout
+        max = (config['network']['ssdp']['timeout'] / 2) * 1000
+        min = 100
+        Math.floor(Math.random() * (max - min))
+
     advertise = (callback) ->
         socket = dgram.createSocket 'udp4'
         socket.bind()
@@ -75,6 +81,9 @@ start = (config, callback) ->
                     callback err
 
     advertise (err) ->
+        setInterval advertise, makeAdvDelay(), (err) ->
+            callback err, 'UPnP Device advertised'
         callback err, 'UPnP Device advertised'
+
 
 exports.start = start
