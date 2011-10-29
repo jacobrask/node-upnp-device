@@ -67,6 +67,8 @@ start = (config, callback) ->
     advertise = (callback) ->
         socket = dgram.createSocket 'udp4'
         socket.bind()
+        socket.setBroadcast 1
+        socket.setMulticastTTL 2
         # First send three notification messages as per UPnP specification
         messages = []
         messages.push new Buffer makeMessage 'NOTIFY', 'upnp:rootdevice', 'all', config
@@ -77,13 +79,12 @@ start = (config, callback) ->
             ssdpSend socket, message, (err) ->
                 done--
                 if done is 0
+                    callback err, socket.address().port
                     socket.close()
-                    callback err
 
-    advertise (err) ->
-        setInterval advertise, makeAdvDelay(), (err) ->
-            callback err, 'UPnP Device advertised'
-        callback err, 'UPnP Device advertised'
-
+    advertise (err, port) ->
+        setInterval advertise, makeAdvDelay(), (err, port) ->
+            callback err, "UPnP Device #{config['device']['uuid']} advertised on port #{port}"
+        callback err, "UPnP Device #{config['device']['uuid']} advertised on port #{port}"
 
 exports.start = start
