@@ -11,6 +11,10 @@ event.on 'ssdpMsg', (msg) ->
 # Initializes a UPnP Device
 start = (config, callback) ->
     
+    # unique ID's used by Control Points
+    bootId = new Date().getTime()
+    configId = Math.floor(Math.random() * 16777216)
+
     # generate SSDP (HTTPU/HTTPMU) header suiting the message type
     makeMessage = (type, nt, nts) ->
         makeServerString = ->
@@ -39,6 +43,8 @@ start = (config, callback) ->
             'NTS': 'ssdp:' + nts
             'SERVER': makeServerString config
             'USN': config['device']['uuid']
+            'BOOTID.UPNP.ORG': bootId
+            'CONFIGID.UPNP.ORG': configId
 
         # append Notification Type to USN, except for
         # requests with only uuid as NT
@@ -48,7 +54,8 @@ start = (config, callback) ->
         switch type
             when 'NOTIFY'
                 useHeaders = [ 'HOST', 'CACHE-CONTROL', 'LOCATION',
-                               'NT', 'NTS', 'SERVER', 'USN' ]
+                               'NT', 'NTS', 'SERVER', 'USN',
+                               'BOOTID.UPNP.ORG', 'CONFIGID.UPNP.ORG' ]
             else
                 useHeaders = []
 
