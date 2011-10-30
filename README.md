@@ -10,6 +10,10 @@ Features so far
 * Generate a device description
 * Send SSDP notifications
 
+Implemented specifications
+--------------------------
+* Started: UPnP Device Architecture version 1.0
+
 Usage
 -----
 ```javascript
@@ -20,6 +24,8 @@ options = {
         type: 'MediaServer',
         version: 1
     },
+    service: {
+        type: 'ContentDirectory'
     app: {
         name: 'Bragi',
         version: '0.0.1'
@@ -27,12 +33,6 @@ options = {
 }
 // Generate a UPnP device description
 upnp.createDevice(options, function(err, msg) {
-    console.log(msg); 
-});
-
-// Send out SSDP announcements about the Device/Application availability
-// Keeps sending out notifications in a random interval
-upnp.announce(function(err, msg) {
     console.log(msg); 
 });
 ```
