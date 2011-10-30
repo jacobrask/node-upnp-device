@@ -2,22 +2,24 @@ http = require 'http'
 url = require 'url'
 device = require './device'
 
-handle =
-    '/description.xml': device.buildDescription
-
 exports.start = (config, callback) ->
     port = config['network']['http']['port']
-    address = config['network']['address']
+    address = config['network']['http']['address']
+
     server = http.createServer (request, response) ->
-        path = url.parse(request.url).pathname
-        if typeof handle[path] is 'function'
+        path = url.parse(request.url).pathname.split('/')
+        reqType = path[1]
+        deviceType = path[path.length-1]
+       
+        if reqType is 'device'
             response.writeHead 200, 'Content-Type': 'text/xml'
             response.write '<?xml version="1.0"?>\n'
-            handle[path](response, config, callback)
+            response.write device.buildDescription deviceType, config
+            response.end()
         else
-            response.writeHead 404,
-                'Content-Type': 'text/plain'
+            response.writeHead 404, 'Content-Type': 'text/plain'
             response.write '404 Not found'
             response.end()
+
     server.listen port, address, ->
-        callback null
+        callback null, "SOAP server started at #{address}:#{port}"

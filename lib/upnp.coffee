@@ -9,12 +9,14 @@ upnp.createDevice = (type, version, callback) =>
             callback = arg
 
     @config =
-        device:
+        upnp:
             schema:
                 prefix: 'urn:schemas-upnp-org:device'
+            version: '1.0'
+        device:
             uuid: 'uuid:' + uuid()
             type: type ? 'Basic'
-            version: version ? '1.0'
+            version: version ? '1'
         network:
             ssdp:
                 timeout: 1800

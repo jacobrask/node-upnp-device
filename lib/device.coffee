@@ -3,28 +3,28 @@ xml = require 'xml'
 # generate device type string
 makeDeviceType = (config) ->
     type = [
-        config['device']['schema']['prefix']
+        config['upnp']['schema']['prefix']
         config['device']['type']
-        config['device']['version'].split('.')[0]
+        config['device']['version']
     ]
     type.join ':'
 
 # build device description element
-buildDescription = (response, config, callback) ->
+buildDescription = (device, config, callback) ->
 
     # generate namespace string
-    genNS = ->
+    makeNS = ->
         ns = [
-            config['device']['schema']['prefix']
-            config['device']['version'].split('.')[0]
-            config['device']['version'].split('.')[1]
+            config['upnp']['schema']['prefix']
+            config['upnp']['version'].split('.')[0]
+            config['upnp']['version'].split('.')[1]
         ]
         ns.join '-'
 
     # build spec version element
     buildSpecVersion = ->
-        major = config['device']['version'].split('.')[0]
-        minor = config['device']['version'].split('.')[1]
+        major = config['upnp']['version'].split('.')[0]
+        minor = config['upnp']['version'].split('.')[1]
         [
             { major: major }
             { minor: minor }
@@ -33,26 +33,23 @@ buildDescription = (response, config, callback) ->
     # build device element
     buildDevice = ->
         name = config['app']['name']
-        url = config['app']['url']
-        version = config['app']['version']
-        udn = 'uuid:' + config['uuid']
+        udn = config['device']['uuid']
         [
-            { deviceType: genDeviceType(config) }
+            { deviceType: makeDeviceType(config) }
             { friendlyName: name }
             { manufacturer: name }
             { modelName: name + ' Media Server' }
             { UDN: udn }
         ]
 
-    root = xml.Element { _attr: { xmlns: genNS() } }
-    desc = xml { root: root }, { stream: true }
-    desc.pipe response
-
-    process.nextTick ->
-        root.push { specVersion: buildSpecVersion() }
-        root.push { device: buildDevice() }
-        root.close()
-        callback null
+    xml [
+        root: [
+            _attr:
+                xmlns: makeNS()
+            { specVersion: buildSpecVersion() }
+            { device: buildDevice() }
+        ]
+    ]
 
 exports.buildDescription = buildDescription
 exports.makeDeviceType = makeDeviceType
