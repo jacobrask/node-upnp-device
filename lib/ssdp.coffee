@@ -31,7 +31,7 @@ start = (config, callback) ->
                 protocol: 'http:'
                 hostname: config['network']['http']['address']
                 port: config['network']['http']['port']
-                pathname: '/devices/' + type
+                pathname: '/device/description'
             )
 
         # possible headers and values
