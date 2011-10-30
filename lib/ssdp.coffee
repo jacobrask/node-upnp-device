@@ -1,5 +1,6 @@
 dgram = require 'dgram'
 url = require 'url'
+http = require 'http'
 event = require('events').EventEmitter
 device = require './device'
 
@@ -90,8 +91,35 @@ start = (config, callback) ->
                     callback err, socket.address().port
                     socket.close()
 
-    advertise (err, port) ->
-        setInterval advertise, makeAdvDelay(), (err, port) ->
-            callback err
+    advertise (err) ->
+        throw err if err
+        setInterval advertise, makeAdvDelay(), (err) ->
+            throw err if err
+
+    parseHeaders = (msg, callback) ->
+        httpParser = http.parsers.alloc()
+        httpParser.reinitialize('request')
+        httpParser.onIncoming = (req) ->
+            callback null, req
+            http.parsers.free(httpParser)
+        httpParser.execute(msg, 0, msg.length)
+
+    listen = (callback) ->
+        socket = dgram.createSocket 'udp4'
+        socket.on 'message', (msg, rinfo) ->
+            parseHeaders msg, (err, headers) ->
+                # these are the ST values we should respond to
+                respondTo = ['ssdp:all', 'upnp:rootdevice', config.device.uuid]
+
+                if headers.method is 'M-SEARCH' and headers.headers.st in respondTo
+                    # specification says to wait between 0 and MX seconds before responding
+                    wait = Math.floor(Math.random() * (parseInt(headers.headers.mx) + 1))
+                    setTimeout advertise, wait, (err) ->
+                        callback err
+
+        socket.bind(1900)
+
+    listen (err, msg) ->
+        console.log msg
 
 exports.start = start
