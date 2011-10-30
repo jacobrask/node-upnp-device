@@ -81,7 +81,7 @@ start = (config, callback) ->
         # First send three notification messages as per UPnP specification
         messages = []
         messages.push new Buffer makeMessage 'NOTIFY', 'upnp:rootdevice', 'all', config
-        messages.push new Buffer makeMessage 'NOTIFY', config['device']['uuid'], 'all', config
+        messages.push new Buffer makeMessage 'NOTIFY', config.device.uuid, 'all', config
         messages.push new Buffer makeMessage 'NOTIFY', device.makeDeviceType(config), 'all', config
         done = messages.length
         for message in messages
@@ -102,7 +102,7 @@ start = (config, callback) ->
         httpParser.onIncoming = (req) ->
             callback null, req
             http.parsers.free(httpParser)
-        httpParser.execute(msg, 0, msg.length)
+        httpParser.execute msg, 0, msg.length
 
     listen = (callback) ->
         socket = dgram.createSocket 'udp4'
@@ -112,12 +112,13 @@ start = (config, callback) ->
                 respondTo = ['ssdp:all', 'upnp:rootdevice', config.device.uuid]
 
                 if headers.method is 'M-SEARCH' and headers.headers.st in respondTo
-                    # specification says to wait between 0 and MX seconds before responding
+                    # specification says to wait between 0 and MX (max 120) seconds before responding
                     wait = Math.floor(Math.random() * (parseInt(headers.headers.mx) + 1))
+                    wait = if wait >= 120 then wait else 120
                     setTimeout advertise, wait, (err) ->
                         callback err
 
-        socket.bind(1900)
+        socket.bind(config.network.ssdp.port)
 
     listen (err, msg) ->
         console.log msg
