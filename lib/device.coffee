@@ -3,28 +3,29 @@ xml = require 'xml'
 # generate device type string
 makeDeviceType = (config) ->
     type = [
-        config['upnp']['schema']['prefix']
-        config['device']['type']
-        config['device']['version']
+        config.specs.upnp.prefix
+        config.device.type
+        config.device.version
     ]
     type.join ':'
 
 # build device description element
-buildDescription = (device, config, callback) ->
+buildDescription = (config, callback) ->
 
     # generate namespace string
     makeNS = ->
         ns = [
-            config['upnp']['schema']['prefix']
-            config['upnp']['version'].split('.')[0]
-            config['upnp']['version'].split('.')[1]
+            config.specs.upnp.prefix
+            'device'
+            config.specs.upnp.version.split('.')[0]
+            config.specs.upnp.version.split('.')[1]
         ]
         ns.join '-'
 
     # build spec version element
     buildSpecVersion = ->
-        major = config['upnp']['version'].split('.')[0]
-        minor = config['upnp']['version'].split('.')[1]
+        major = config.specs.upnp.version.split('.')[0]
+        minor = config.specs.upnp.version.split('.')[1]
         [
             { major: major }
             { minor: minor }
@@ -32,14 +33,12 @@ buildDescription = (device, config, callback) ->
 
     # build device element
     buildDevice = ->
-        name = config['app']['name']
-        udn = config['device']['uuid']
         [
             { deviceType: makeDeviceType(config) }
-            { friendlyName: name }
-            { manufacturer: name }
-            { modelName: name + ' Media Server' }
-            { UDN: udn }
+            { friendlyName: config.app.name }
+            { manufacturer: config.app.name }
+            { modelName: config.app.name + ' Media Server' }
+            { UDN: config.device.uuid }
         ]
 
     xml [

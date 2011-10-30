@@ -3,20 +3,16 @@ ssdp = require './ssdp'
 xmlServer = require './xml-server'
 
 upnp = {}
-upnp.createDevice = (type, version, callback) =>
-    for arg in arguments
-        if typeof arg is 'Function'
-            callback = arg
-
+upnp.createDevice = (options, callback) =>
     @config =
-        upnp:
-            schema:
-                prefix: 'urn:schemas-upnp-org:device'
-            version: '1.0'
+        specs:
+            upnp:
+                prefix: 'urn:schemas-upnp-org'
+                version: '1.0'
         device:
             uuid: 'uuid:' + uuid()
-            type: type ? 'Basic'
-            version: version ? '1'
+            type: options.device.type ? 'Basic'
+            version: options.device.version ? '1'
         network:
             ssdp:
                 timeout: 1800
@@ -25,18 +21,12 @@ upnp.createDevice = (type, version, callback) =>
             http:
                 address: '192.168.9.3'
                 port: 3000
- 
+        app:
+            name: options.app.name ? 'Generic UPnP Device'
+            version: options.app.version ? '1.0'
+
     xmlServer.start @config, (err, msg) ->
         callback err, msg
-
-upnp.announce = (name, version, callback) =>
-    for arg in arguments
-        if typeof arg is 'Function'
-            callback = arg
-
-    @config['app'] =
-        name: name ? 'Generic UPnP Device'
-        version: version ? '1.0'
 
     ssdp.start @config, (err, msg) ->
         callback err, msg
