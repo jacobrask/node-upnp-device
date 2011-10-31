@@ -3,6 +3,7 @@ url = require 'url'
 http = require 'http'
 event = require('events').EventEmitter
 device = require './device'
+extend = require('./helpers').extend
 
 event = new event
 
@@ -12,8 +13,23 @@ event.on 'ssdpMsg', (msg) ->
 # Initializes a UPnP Device
 start = (config, callback) ->
     
+    # Listen for searches
+    socket = dgram.createSocket 'udp4'
+    socket.on 'message', (msg, rinfo) ->
+        parseHeaders msg, (err, req) ->
+            # these are the ST values we should respond to
+            respondTo = [ 'ssdp:all', 'upnp:rootdevice', config.device.uuid ]
+            if req.method is 'M-SEARCH' and req.headers.st in respondTo
+                # specification says to wait between 0 and MX (max 120) seconds before responding
+                wait = Math.floor(Math.random() * (parseInt(req.headers.mx) + 1))
+                wait = if wait >= 120 then 120 else wait
+                setTimeout answer, wait, req, (err, msg) ->
+                    callback err, msg
+
+    socket.bind(config.network.ssdp.port)
+
     # generate SSDP (HTTPU/HTTPMU) header suiting the message type
-    makeMessage = (type, nt, nts) ->
+    makeMessage = (reqType, customHeaders, values) ->
         makeServerString = ->
             [
                 'OS/1.0 '
@@ -36,36 +52,32 @@ start = (config, callback) ->
             'HOST': config['network']['ssdp']['address'] + ':' + config['network']['ssdp']['port']
             'CACHE-CONTROL': 'max-age=' + config['network']['ssdp']['timeout']
             'LOCATION': makeDescriptionUrl config
-            'NT': nt
-            'NTS': 'ssdp:' + nts
             'SERVER': makeServerString config
             'USN': config['device']['uuid']
 
         # append Notification Type to USN, except for
         # requests with only uuid as NT
-        unless nt is config['device']['uuid']
-            headers['USN'] += '::' + nt
+        unless customHeaders['NT'] is config['device']['uuid']
+            headers['USN'] += '::' + customHeaders['NT']
 
-        switch type
-            when 'NOTIFY'
-                useHeaders = [ 'HOST', 'CACHE-CONTROL', 'LOCATION',
-                               'NT', 'NTS', 'SERVER', 'USN' ]
-            else
-                useHeaders = []
+        headers = extend(headers, customHeaders)
 
-        message = [ type + ' * HTTP/1.1' ]
-        for header in useHeaders
-            message.push header + ': ' + headers[header]
+        message = [ reqType + ' * HTTP/1.1' ]
+        for header, value of headers
+            message.push header + ': ' + value
 
         # add carriage returns and new lines as required by HTTP spec
         message.push '\r\n'
         message.join '\r\n'
 
-
-    ssdpSend = (socket, message, callback) ->
-        socket.send message, 0, message.length, config['network']['ssdp']['port'], config['network']['ssdp']['address'], (err) ->
-            event.emit 'ssdpMsg', "SSDP message sent on port #{socket.address().port}"
-            callback err
+    ssdpSendMessages = (messages, callback) ->
+        done = messages.length
+        for message in messages
+            socket.send message, 0, message.length, config['network']['ssdp']['port'], config['network']['ssdp']['address'], (err) ->
+                event.emit 'ssdpMsg', "SSDP message sent on port #{socket.address().port}"
+                done--
+                if done is 0
+                    callback err
 
     makeAdvDelay = ->
         # recommended delay between advertisements is a random interval of less than half of timeout
@@ -74,22 +86,27 @@ start = (config, callback) ->
         Math.floor(Math.random() * (max - min))
 
     advertise = (callback) ->
-        socket = dgram.createSocket 'udp4'
-        socket.bind()
-        socket.setBroadcast 1
-        socket.setMulticastTTL 2
         # First send three notification messages as per UPnP specification
         messages = []
-        messages.push new Buffer makeMessage 'NOTIFY', 'upnp:rootdevice', 'all', config
-        messages.push new Buffer makeMessage 'NOTIFY', config.device.uuid, 'all', config
-        messages.push new Buffer makeMessage 'NOTIFY', device.makeDeviceType(config), 'all', config
-        done = messages.length
-        for message in messages
-            ssdpSend socket, message, (err) ->
-                done--
-                if done is 0
-                    callback err, socket.address().port
-                    socket.close()
+        messages.push new Buffer makeMessage 'NOTIFY', { NTS: 'ssdp:all', NT: 'upnp:rootdevice' }, config
+        messages.push new Buffer makeMessage 'NOTIFY', { NTS: 'ssdp:all', NT: config.device.uuid }, config
+        messages.push new Buffer makeMessage 'NOTIFY', { NTS: 'ssdp:all', NT: device.makeDeviceType(config) }, config
+        ssdpSendMessages messages, (err) ->
+            callback err, 'advertisement sent'
+
+    answer = (req, callback) ->
+        messages = []
+        # if Control Point searched for "ssdp:all" respond 3 times according to spec
+        if req.headers.st is 'ssdp:all'
+            messages.push new Buffer makeMessage 'NOTIFY', { ST: 'upnp:rootdevice', EXT: '' }, config
+            messages.push new Buffer makeMessage 'NOTIFY', { ST: config.device.uuid, EXT: '' }, config
+            messages.push new Buffer makeMessage 'NOTIFY', { ST: device.makeDeviceType(config), EXT: '' }, config
+        # otherwise respond with same ST value as request
+        else
+            messages.push new Buffer makeMessage 'NOTIFY', { ST: req.headers.st, EXT: '' }, config
+
+        ssdpSendMessages messages, (err) ->
+            callback err, 'answer sent'
 
     advertise (err) ->
         throw err if err
@@ -104,23 +121,5 @@ start = (config, callback) ->
             http.parsers.free(httpParser)
         httpParser.execute msg, 0, msg.length
 
-    listen = (callback) ->
-        socket = dgram.createSocket 'udp4'
-        socket.on 'message', (msg, rinfo) ->
-            parseHeaders msg, (err, headers) ->
-                # these are the ST values we should respond to
-                respondTo = ['ssdp:all', 'upnp:rootdevice', config.device.uuid]
-
-                if headers.method is 'M-SEARCH' and headers.headers.st in respondTo
-                    # specification says to wait between 0 and MX (max 120) seconds before responding
-                    wait = Math.floor(Math.random() * (parseInt(headers.headers.mx) + 1))
-                    wait = if wait >= 120 then wait else 120
-                    setTimeout advertise, wait, (err) ->
-                        callback err
-
-        socket.bind(config.network.ssdp.port)
-
-    listen (err, msg) ->
-        console.log msg
 
 exports.start = start
