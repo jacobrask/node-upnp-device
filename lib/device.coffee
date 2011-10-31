@@ -33,11 +33,12 @@ buildDescription = (config, callback) ->
 
     # build device element
     buildDevice = ->
+        name = config.app.name.substr(0, 64)
         [
             { deviceType: makeDeviceType(config) }
-            { friendlyName: config.app.name }
-            { manufacturer: config.app.name }
-            { modelName: config.app.name + ' Media Server' }
+            { friendlyName: name }
+            { manufacturer: name }
+            { modelName: name.substr(0, 32) }
             { UDN: config.device.uuid }
         ]
 
