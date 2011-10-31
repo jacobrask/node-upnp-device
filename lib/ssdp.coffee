@@ -57,8 +57,10 @@ start = (config, callback) ->
 
         # append Notification Type to USN, except for
         # requests with only uuid as NT
-        unless customHeaders['NT'] is config['device']['uuid']
+        if customHeaders['NT'] and customHeaders['NT'] isnt config['device']['uuid']
             headers['USN'] += '::' + customHeaders['NT']
+        else if customHeaders['ST'] and customHeaders['ST'] isnt config['device']['uuid']
+            headers['USN'] += '::' + customHeaders['ST']
 
         headers = extend(headers, customHeaders)
 

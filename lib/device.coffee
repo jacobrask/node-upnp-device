@@ -4,6 +4,7 @@ xml = require 'xml'
 makeDeviceType = (config) ->
     type = [
         config.specs.upnp.prefix
+        'device'
         config.device.type
         config.device.version
     ]
