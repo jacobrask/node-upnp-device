@@ -1,4 +1,5 @@
 xml = require 'xml'
+service = require './service'
 
 # generate device type string
 makeDeviceType = (config) ->
@@ -41,6 +42,7 @@ buildDescription = (config, callback) ->
             { manufacturer: name }
             { modelName: name.substr(0, 32) }
             { UDN: config.device.uuid }
+            { serviceList: service.buildServiceList(config) }
         ]
 
     xml [

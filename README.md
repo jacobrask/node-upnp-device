@@ -20,12 +20,8 @@ Usage
 var upnp = require('upnp-device');
 
 options = {
-    device: {
-        type: 'MediaServer',
-        version: 1
-    },
-    service: {
-        type: 'ContentDirectory'
+    device: 'MediaServer',
+    services: [ 'ConnectionManager', 'ContentDirectory' ],
     app: {
         name: 'Bragi',
         version: '0.0.1'

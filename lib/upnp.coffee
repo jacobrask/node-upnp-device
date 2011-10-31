@@ -11,8 +11,9 @@ upnp.createDevice = (options, callback) =>
                 version: '1.0'
         device:
             uuid: 'uuid:' + uuid()
-            type: options.device.type ? 'Basic'
-            version: options.device.version ? '1'
+            type: options.device ? 'Basic'
+            version: 1
+        services: options.services ? [ ]
         network:
             ssdp:
                 timeout: 1800
