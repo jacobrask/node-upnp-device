@@ -1,12 +1,11 @@
 http = require 'http'
 fs = require 'fs'
 url = require 'url'
+portscanner = require 'portscanner'
 device = require './device'
 
 exports.start = (config, callback) ->
-    port = config['network']['http']['port']
-    address = config['network']['http']['address']
-
+    
     server = http.createServer (request, response) ->
         # url formats:
         # /device/description
@@ -34,5 +33,10 @@ exports.start = (config, callback) ->
             response.write '404 Not found'
             response.end()
 
-    server.listen port, address, ->
-        callback null, "SOAP server started at #{address}:#{port}"
+    # find an open port for HTTP server and pass to SSDP server
+    address = '192.168.9.3'
+    portscanner.findAPortNotInUse 49200, 49220, address, (err, port) ->
+        throw err if err
+        server.listen port, address, ->
+            console.log "Web server listening on #{address}:#{port}"
+            callback null, { port: port, address: address }
