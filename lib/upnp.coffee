@@ -23,8 +23,8 @@ upnp.createDevice = (options, callback) =>
                 address: '192.168.9.3'
                 port: 3000
         app:
-            name: options.app.name ? 'Generic UPnP Device'
-            version: options.app.version ? '1.0'
+            name: options.app?.name ? 'Generic UPnP Device'
+            version: options.app?.version ? '1.0'
 
     xmlServer.start @config, (err, msg) ->
         callback err, msg

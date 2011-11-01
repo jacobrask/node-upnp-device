@@ -50,7 +50,7 @@ start = (config, callback) ->
         # possible headers and values
         headers =
             'HOST': config['network']['ssdp']['address'] + ':' + config['network']['ssdp']['port']
-            'CACHE-CONTROL': 'max-age=' + config['network']['ssdp']['timeout']
+            'CACHE-CONTROL': 'max-age = ' + config['network']['ssdp']['timeout']
             'LOCATION': makeDescriptionUrl config
             'SERVER': makeServerString config
             'USN': config['device']['uuid']
