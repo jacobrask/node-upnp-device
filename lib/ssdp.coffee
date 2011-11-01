@@ -3,6 +3,7 @@ url = require 'url'
 http = require 'http'
 event = require('events').EventEmitter
 device = require './device'
+service = require './service'
 extend = require('./helpers').extend
 
 event = new event
@@ -73,13 +74,17 @@ start = (config, callback) ->
         message.join '\r\n'
 
     ssdpSendMessages = (messages, callback) ->
+        sendSocket = dgram.createSocket 'udp4'
+        sendSocket.setMulticastTTL 4
+        sendSocket.bind()
         done = messages.length
         for message in messages
-            socket.send message, 0, message.length, config['network']['ssdp']['port'], config['network']['ssdp']['address'], (err) ->
-                event.emit 'ssdpMsg', "SSDP message sent on port #{socket.address().port}"
+            sendSocket.send message, 0, message.length, config['network']['ssdp']['port'], config['network']['ssdp']['address'], (err) ->
+                event.emit 'ssdpMsg', "SSDP message sent on port #{sendSocket.address().port}"
                 done--
                 if done is 0
                     callback err
+                    sendSocket.close()
 
     makeAdvDelay = ->
         # recommended delay between advertisements is a random interval of less than half of timeout
@@ -90,9 +95,11 @@ start = (config, callback) ->
     advertise = (callback) ->
         # First send three notification messages as per UPnP specification
         messages = []
-        messages.push new Buffer makeMessage 'NOTIFY', { NTS: 'ssdp:all', NT: 'upnp:rootdevice' }, config
-        messages.push new Buffer makeMessage 'NOTIFY', { NTS: 'ssdp:all', NT: config.device.uuid }, config
-        messages.push new Buffer makeMessage 'NOTIFY', { NTS: 'ssdp:all', NT: device.makeDeviceType(config) }, config
+        messages.push new Buffer makeMessage 'NOTIFY', { NT: 'upnp:rootdevice', NTS: 'ssdp:alive' }, config
+        messages.push new Buffer makeMessage 'NOTIFY', { NT: config.device.uuid, NTS: 'ssdp:alive' }, config
+        messages.push new Buffer makeMessage 'NOTIFY', { NT: device.makeDeviceType(config), NTS: 'ssdp:alive' }, config
+        for serviceType in config.services
+            messages.push new Buffer makeMessage 'NOTIFY', { NT: service.makeServiceType(serviceType, config), NTS: 'ssdp:alive' }, config
         ssdpSendMessages messages, (err) ->
             callback err, 'advertisement sent'
 
