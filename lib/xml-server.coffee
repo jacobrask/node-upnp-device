@@ -3,6 +3,7 @@ fs = require 'fs'
 url = require 'url'
 portscanner = require 'portscanner'
 device = require './device'
+helpers = require './helpers'
 
 exports.start = (config, callback) ->
     
@@ -33,10 +34,11 @@ exports.start = (config, callback) ->
             response.write '404 Not found'
             response.end()
 
-    # find an open port for HTTP server and pass to SSDP server
-    address = '192.168.9.3'
-    portscanner.findAPortNotInUse 49200, 49220, address, (err, port) ->
+    # find internal address and port to use for http server
+    helpers.getNetworkIP (err, address) ->
         throw err if err
-        server.listen port, address, ->
-            console.log "Web server listening on #{address}:#{port}"
-            callback null, { port: port, address: address }
+        portscanner.findAPortNotInUse 49201, 49220, address, (err, port) ->
+            throw err if err
+            server.listen port, address, ->
+                console.log "Web server listening on #{address}:#{port}"
+                callback null, { port: port, address: address }
