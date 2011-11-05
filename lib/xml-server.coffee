@@ -5,40 +5,52 @@ portscanner = require 'portscanner'
 device = require './device'
 helpers = require './helpers'
 
-exports.start = (config, callback) ->
-    
-    server = http.createServer (request, response) ->
-        # url formats:
-        # /device/description
-        # /service/(description|control|event)/serviceType
-        path = url.parse(request.url).pathname.split('/')
-        reqType = path[1]
-        action = path[2]
-        serviceType = path[3]
-
-        if reqType in ['device', 'service']
-            response.writeHead 200, 'Content-Type': 'text/xml'
-            # service descriptions are static files
-            if reqType is 'service' and action is 'description'
-                fs.readFile __dirname + '/services/' + serviceType + '.xml', (err, file) ->
+createServer = exports.createServer = (deviceType, deviceName) ->
+    http.createServer (req, res) ->
+        if isServiceReq(req) or isDeviceReq(req)
+            res.writeHead 200, 'Content-Type': 'text/xml'
+            if isServiceReq(req) and getReqAction(req) is 'description'
+                # service descriptions are static XML files
+                fs.readFile makeServicePath(getReqType(req)), (err, file) ->
                     throw err if err
-                    response.write file
-                    response.end()
+                    res.write file
+                    res.end()
             else
-                response.write '<?xml version="1.0" encoding="utf-8"?>\n'
-                if reqType is 'device'
-                    response.write device.buildDescription config
-                response.end()
+                res.write '<?xml version="1.0" encoding="utf-8"?>\n'
+                if isDeviceReq(req)
+                    res.write device.buildDescription deviceType, deviceName
+                res.end()
         else
-            response.writeHead 404, 'Content-Type': 'text/plain'
-            response.write '404 Not found'
-            response.end()
+            res.writeHead 404, 'Content-Type': 'text/plain'
+            res.write '404 Not found'
+            res.end()
 
-    # find internal address and port to use for http server
+# find a suitable IP/port and start listening on server
+listen = exports.listen = (server, callback) ->
     helpers.getNetworkIP (err, address) ->
-        throw err if err
+        return callback err if err
         portscanner.findAPortNotInUse 49201, 49220, address, (err, port) ->
-            throw err if err
-            server.listen port, address, ->
-                console.log "Web server listening on #{address}:#{port}"
-                callback null, { port: port, address: address }
+            return callback err if err
+            server.listen port, address, (err) ->
+                callback err, { address: address, port: port }
+
+# handle requests in various ways
+parseReq = (req) ->
+    # url formats:
+    # /device/description
+    # /service/(description|control|event)/serviceType
+    path = url.parse(req.url).pathname.split('/')
+    {
+        category: path[1]
+        action: path[2]
+        type: path[3]
+    }
+getReqCategory = (req) -> parseReq(req).category
+getReqAction = (req) -> parseReq(req).action
+getReqType = (req) -> parseReq(req).type
+
+isDeviceReq = (req) -> getReqCategory(req) is 'device'
+isServiceReq = (req) -> getReqCategory(req) is 'service'
+
+makeServicePath = (serviceType) ->
+    __dirname + '/services/' + serviceType + '.xml'

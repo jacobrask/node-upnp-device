@@ -16,19 +16,17 @@ Implemented specifications
 
 Usage
 -----
+
+All errors are passed back to the applications as the first argument of the callback, letting you handle errors in whatever way you prefer.
+
 ```javascript
 var upnp = require('upnp-device');
 
-options = {
-    device: 'MediaServer',
-    services: [ 'ConnectionManager', 'ContentDirectory' ],
-    app: {
-        name: 'Bragi',
-        version: '0.0.1'
+// Generate a UPnP device description and announce it via SSDP
+upnp.createDevice('My Media App', 'MediaServer', function(err, server) {
+    if (err !== null) {
+        throw err;
     }
-}
-// Generate a UPnP device description
-upnp.createDevice(options, function(err, msg) {
-    console.log(msg); 
+    console.log('Device successfully started');
 });
 ```
