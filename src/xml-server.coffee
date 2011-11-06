@@ -52,4 +52,4 @@ isDeviceReq = (req) -> getReqCategory(req) is 'device'
 isServiceReq = (req) -> getReqCategory(req) is 'service'
 
 makeServicePath = (serviceType) ->
-    __dirname + '/services/' + serviceType + '.xml'
+    __dirname + '../lib/services/' + serviceType + '.xml'
