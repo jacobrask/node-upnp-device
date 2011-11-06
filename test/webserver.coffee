@@ -18,6 +18,14 @@ testDeviceDescriptions = (deviceType, deviceName, deviceVersion) ->
                     assert.equal result.device.deviceType, "#{config.schemaPrefix}:device:#{deviceType}:#{deviceVersion}"
                     assert.equal result.device.friendlyName, deviceName
 
+                    # make sure that all the device's implemented service types are present in XML
+                    serviceTypes = []
+                    for key, value of result.device.serviceList
+                        for service in value
+                            serviceTypes.push service.serviceType
+                    for serviceType in config.devices[deviceType].services
+                        assert.ok "#{config.schemaPrefix}:service:#{serviceType}:#{deviceVersion}" in serviceTypes
+
 testServiceDescriptions = (deviceType, deviceName, serviceTypes) ->
     xmlServer.listen xmlServer.createServer(deviceType, deviceName), (err, httpServer) ->
         assert.ok !err
