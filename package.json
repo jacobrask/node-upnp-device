@@ -7,6 +7,9 @@
         "http": ">=0.0.0",
         "node-uuid": ">=1.2.0"
     }, 
+    devDependencies: {
+        "xml2json": ">=0.1.11"
+    },
     "author": "Jacob Rask (http://jacobrask.net)",
     "main": "./lib/upnp"
 }
