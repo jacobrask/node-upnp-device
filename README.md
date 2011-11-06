@@ -3,12 +3,21 @@ UPnP Devices in Node.js
 
 upnp-device lets you create [UPnP Devices](http://upnp.org/sdcps-and-certification/standards/sdcps/) in Node.js.
 
-upnp-device is currently in a very early development phase and the first target is to implement the MediaServer:1 specification.
+upnp-device is currently in a ___very early development phase___. The first target is to implement the MediaServer:1 specification.
 
 Features so far
 ---------------
-* Generate a device description
-* Send SSDP notifications
+
+* Generate MediaServer device and service descriptions
+* Send SSDP notifications about created device
+
+Install
+-------
+
+```bash
+$ git clone https://github.com/jacobrask/node-upnp-device.git ./node_modules/upnp-device
+$ cake build
+```
 
 Implemented specifications
 --------------------------
@@ -22,7 +31,7 @@ All errors are passed back to the applications as the first argument of the call
 ```javascript
 var upnp = require('upnp-device');
 
-// Generate a UPnP device description and announce it via SSDP
+// Generate an UPnP device description and announce it via SSDP
 upnp.createDevice('My Media App', 'MediaServer', function(err, server) {
     if (err !== null) {
         throw err;
@@ -30,3 +39,15 @@ upnp.createDevice('My Media App', 'MediaServer', function(err, server) {
     console.log('Device successfully started');
 });
 ```
+
+See also
+--------
+
+ * [UPnP client](https://github.com/TooTallNate/node-upnp-client) by TooTallNate
+
+Development
+-----------
+
+upnp-device is written in [CoffeeScript](http://coffeescript.org).
+
+Contributions and comments are welcome on GitHub or IRC (jacobrask@FreeNode).
