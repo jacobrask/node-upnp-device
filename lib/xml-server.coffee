@@ -29,10 +29,9 @@ createServer = exports.createServer = (deviceType, deviceName) ->
 listen = exports.listen = (server, callback) ->
     helpers.getNetworkIP (err, address) ->
         return callback err if err
-        portscanner.findAPortNotInUse 49201, 49220, address, (err, port) ->
-            return callback err if err
-            server.listen port, address, (err) ->
-                callback err, { address: address, port: port }
+        server.listen (err) ->
+            port = server.address().port
+            callback err, { address: address, port: port }
 
 # handle requests in various ways
 parseReq = (req) ->

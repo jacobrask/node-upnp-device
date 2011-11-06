@@ -16,6 +16,6 @@ upnp =
         xmlServer.listen server, (err, httpServer) ->
             ssdp.announce dev, httpServer
             ssdp.listen dev, httpServer
-            callback err, "#{deviceType} device successfully started and announced."
+            callback err, "#{deviceType} device successfully started and announced on #{httpServer.address}:#{httpServer.port}."
 
 module.exports = upnp
