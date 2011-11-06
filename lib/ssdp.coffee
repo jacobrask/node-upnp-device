@@ -36,8 +36,7 @@ advertise = (dev, httpServer) ->
     sendMessages(
         makeMessage(
             'notify'
-            [ 'host', 'cache-control', 'location', 'nt', 'nts', 'server', 'usn' ]
-            nt: nt, nts: 'ssdp:alive'
+            nt: nt, nts: 'ssdp:alive', host: null
             dev, httpServer
         ) for nt in makeNotificationHeaders(dev)
     )
@@ -47,8 +46,7 @@ answer = (req, dev, httpServer) ->
     sendMessages(
         makeMessage(
             'ok'
-            [ 'cache-control', 'ext', 'location', 'server', 'st', 'usn' ]
-            st: st
+            st: st, ext: null
             dev, httpServer
         ) for st in (if req.searchType is 'ssdp:all' then makeNotificationHeaders(dev) else [ req.searchType ])
         req.address
@@ -81,24 +79,22 @@ sendMessages = (messages, address, port) ->
                 socket.close()
 
 # generate SSDP (HTTPU/HTTPMU) headers suiting the message type
-makeMessage = (reqType, useHeaders, customHeaders, dev, httpServer) ->
+makeMessage = (reqType, customHeaders, dev, httpServer) ->
     # headers with static values
-    headers =
+    defaultHeaders =
         host: "#{config.ssdp.address}:#{config.ssdp.port}"
         'cache-control': "max-age = #{config.ssdp.timeout}"
         location: makeDescriptionUrl httpServer
         server: makeServerString dev
-        usn: config.uuid
         ext: ''
+        usn: config.uuid + (if config.uuid in [ customHeaders.nt, customHeaders.st ] then '' else '::' + customHeaders.nt or customHeaders.st)
 
-    # append NT to USN, except for requests with only uuid as NT
-    if customHeaders.nt and customHeaders.nt isnt config.uuid
-        headers.usn += '::' + customHeaders.nt
-    else if customHeaders.st and customHeaders.st isnt config.uuid
-        headers.usn += '::' + customHeaders.st
+    # headers that are always used
+    includeHeaders = [ 'cache-control', 'server', 'usn', 'location' ]
+    # add passed headers to list of headers to include
+    for key of customHeaders
+        includeHeaders.push key
 
-    headers = extend(headers, customHeaders)
-    
     # build message string
     message =
         if reqType is 'ok'
@@ -106,8 +102,9 @@ makeMessage = (reqType, useHeaders, customHeaders, dev, httpServer) ->
         else
             [ "#{reqType.toUpperCase()} * HTTP/1.1" ]
 
-    for header in useHeaders
-        message.push "#{header.toUpperCase()}: #{headers[header]}"
+    for header in includeHeaders
+        message.push "#{header.toUpperCase()}: #{customHeaders[header] or defaultHeaders[header]}"
+
     # add carriage returns and new lines as required by HTTP spec
     message.push '\r\n'
     console.log message
