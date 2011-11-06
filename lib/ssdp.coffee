@@ -3,7 +3,6 @@ url = require 'url'
 http = require 'http'
 config = require './config'
 device = require './device'
-extend = require('./helpers').extend
 
 announce = exports.announce = (dev, httpServer) ->
     advertise dev, httpServer
