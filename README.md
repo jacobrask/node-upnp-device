@@ -19,12 +19,10 @@ $ git clone https://github.com/jacobrask/node-upnp-device.git ./node_modules/upn
 $ cake build
 ```
 
-Implemented specifications
---------------------------
-* Started: UPnP Device Architecture version 1.0
-
 Usage
 -----
+
+Node 0.4.12 recommended. upnp-device is ___not___ compatible with Node 0.6.0 due to some missing UDP features in 0.6.0.
 
 All errors are passed back to the applications as the first argument of the callback, letting you handle errors in whatever way you prefer.
 
