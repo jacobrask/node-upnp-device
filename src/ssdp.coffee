@@ -3,6 +3,7 @@ url = require 'url'
 http = require 'http'
 config = require './config'
 device = require './device'
+{debug} = require './helpers'
 
 announce = exports.announce = (dev, httpServer) ->
     advertise dev, httpServer
@@ -19,6 +20,7 @@ listen = exports.listen = (dev, httpServer) ->
             # these are the ST (search type) values we should respond to
             respondTo = [ 'ssdp:all', 'upnp:rootdevice', config.uuid ]
             if req.method is 'M-SEARCH' and req.headers.st in respondTo
+                debug "Received search request from #{rinfo.address}:#{rinfo.port}"
                 # specification says to wait between 0 and MX
                 # (max 120) seconds before responding
                 wait = Math.floor(Math.random() * (parseInt(req.headers.mx) + 1))
@@ -70,8 +72,8 @@ sendMessages = (messages, address, port) ->
     else
         address = config.ssdp.address
     socket.bind(config.ssdp.port)
+    debug "Sending #{messages.length} messages from #{config.ssdp.port} to #{address}:#{port}"
     done = messages.length
-    console.log "Sent messages to #{address}:#{port}"
     for msg in messages
         socket.send msg, 0, msg.length, port, address, ->
             if done-- is 1
@@ -105,8 +107,8 @@ makeMessage = (reqType, customHeaders, dev, httpServer) ->
         message.push "#{header.toUpperCase()}: #{customHeaders[header] or defaultHeaders[header]}"
 
     # add carriage returns and new lines as required by HTTP spec
+    debug message.join(', ')
     message.push '\r\n'
-    console.log message
     new Buffer message.join '\r\n'
 
 makeServerString = (dev) ->

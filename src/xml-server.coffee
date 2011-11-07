@@ -4,9 +4,11 @@ url = require 'url'
 portscanner = require 'portscanner'
 device = require './device'
 helpers = require './helpers'
+debug = helpers.debug
 
 createServer = exports.createServer = (deviceType, deviceName) ->
     http.createServer (req, res) ->
+        debug "#{req.url} served to #{req.client.remoteAddress}"
         if isServiceReq(req) or isDeviceReq(req)
             res.writeHead 200, 'Content-Type': 'text/xml'
             if isServiceReq(req) and getReqAction(req) is 'description'
@@ -31,6 +33,7 @@ listen = exports.listen = (server, callback) ->
         return callback err if err
         server.listen (err) ->
             port = server.address().port
+            debug "Web server listening on http://#{address}:#{port}"
             callback err, { address: address, port: port }
 
 # handle requests in various ways

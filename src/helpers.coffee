@@ -1,3 +1,9 @@
+debug = exports.debug =
+    if process.env.NODE_DEBUG && /upnp-device/.test process.env.NODE_DEBUG
+        (args...) -> console.error 'UPNP:', args...
+    else
+        ->
+
 exports.getNetworkIP = (callback) ->
     ignoreRE = /^(127\.0\.0\.1|::1|fe80(:1)?::1(%.*)?)$/i
     exec = require('child_process').exec
