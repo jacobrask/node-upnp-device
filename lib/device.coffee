@@ -54,10 +54,8 @@ makeServiceType = exports.makeServiceType = (type) ->
 
 # build an array of all service elements
 buildServiceList = (deviceType) ->
-    services = []
     for serviceType in config.devices[deviceType].services
-        services.push { service: buildService serviceType }
-    services
+        { service: buildService serviceType }
 
 # build an array of elements to generate a service XML element
 buildService = (serviceType) ->

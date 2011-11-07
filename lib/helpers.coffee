@@ -1,3 +1,5 @@
+{exec} = require 'child_process'
+
 debug = exports.debug =
     if process.env.NODE_DEBUG && /upnp-device/.test process.env.NODE_DEBUG
         (args...) -> console.error 'UPNP:', args...
@@ -5,24 +7,15 @@ debug = exports.debug =
         ->
 
 exports.getNetworkIP = (callback) ->
-    ignoreRE = /^(127\.0\.0\.1|::1|fe80(:1)?::1(%.*)?)$/i
-    exec = require('child_process').exec
-
-    if process.platform is 'darwin'
-        filterRE = /\binet\s+([^\s]+)/g
-    else
-        filterRE = /\binet\b[^:]+:\s*([^\s]+)/g
     exec 'ifconfig', (err, stdout, sterr) ->
-        ips = []
+        if process.platform is 'darwin'
+            filterRE = /\binet\s+([^\s]+)/g
+        else
+            filterRE = /\binet\b[^:]+:\s*([^\s]+)/g
         # extract IPs
         matches = stdout.match(filterRE)
-        if matches
-            # JS has no lookbehind REs, so we need a trick
-            for match in matches
-                ips.push match.replace filterRE, '$1'
-            for ip in ips
-                # filter BS
-                unless ignoreRE.test ip
-                    callback err, ip
-        else
-            callback err, null
+
+        # filter out localhost ips
+        callback err, matches
+            .map((match) -> match.replace filterRE, '$1')
+            .filter((match) -> !/^(127\.0\.0\.1|::1|fe80(:1)?::1(%.*)?)$/i.test match)[0]
