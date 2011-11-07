@@ -14,14 +14,10 @@ Features so far
 Install
 -------
 
-upnp-device is not ready for npm yet, so you need to install manually. CoffeeScript is required for building.
+upnp-device is not ready for npm yet, so you need to install manually.
 
 ```bash
 $ git clone https://github.com/jacobrask/node-upnp-device.git ./node_modules/upnp-device
-$ cd node_modules/upnp-device
-$ npm install -d
-# npm install -g coffee-script
-$ cake build
 ```
 
 Usage
