@@ -58,10 +58,10 @@ answer = (req, dev, httpServer) ->
 
 # send 3 messages about the device, and then one for each service
 makeNotificationHeaders = (dev) ->
-    arr = [ 'upnp:rootdevice', config.uuid, device.makeDeviceType(dev.type) ]
-    for serviceType in config.devices[dev.type].services
-        arr.push device.makeServiceType(serviceType)
-    arr
+    [ 'upnp:rootdevice'
+      config.uuid
+      device.makeDeviceType dev.type
+    ].concat config.devices[dev.type].services
 
 # create a UDP socket, send messages, then close socket
 sendMessages = (messages, address, port) ->
@@ -73,7 +73,7 @@ sendMessages = (messages, address, port) ->
         socket.addMembership config.ssdp.address
     else
         address = config.ssdp.address
-    socket.bind(config.ssdp.port)
+    socket.bind config.ssdp.port
     debug "Sending #{messages.length} messages from #{config.ssdp.port} to #{address}:#{port}"
     done = messages.length
     for msg in messages
@@ -90,13 +90,10 @@ makeMessage = (reqType, customHeaders, dev, httpServer) ->
         location: makeDescriptionUrl httpServer
         server: makeServerString dev
         ext: ''
-        usn: config.uuid + (if config.uuid in [ customHeaders.nt, customHeaders.st ] then '' else '::' + customHeaders.nt or customHeaders.st)
+        usn: config.uuid + (if config.uuid is (customHeaders.nt or customHeaders.st) then '' else '::' + (customHeaders.nt or customHeaders.st))
 
-    # headers that are always used
-    includeHeaders = [ 'cache-control', 'server', 'usn', 'location' ]
-    # add passed headers to list of headers to include
-    for key of customHeaders
-        includeHeaders.push key
+    # specified headers are included in every request, merge them with headers passed to function
+    includeHeaders = ['cache-control','server','usn','location'].concat Object.keys customHeaders
 
     # build message string
     message =
@@ -108,8 +105,8 @@ makeMessage = (reqType, customHeaders, dev, httpServer) ->
     for header in includeHeaders
         message.push "#{header.toUpperCase()}: #{customHeaders[header] or defaultHeaders[header]}"
 
+    debug message.join ', '
     # add carriage returns and new lines as required by HTTP spec
-    debug message.join(', ')
     message.push '\r\n'
     new Buffer message.join '\r\n'
 
