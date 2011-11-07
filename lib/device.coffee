@@ -1,3 +1,4 @@
+os = require 'os'
 xml = require 'xml'
 config = require './config'
 
@@ -27,11 +28,10 @@ buildSpecVersion = ->
 
 # build device element
 buildDevice = (deviceType, deviceName) ->
-    name = deviceName.substr(0, 64)
     [ { deviceType: makeDeviceType deviceType }
-      { friendlyName: name }
-      { manufacturer: name }
-      { modelName: name.substr(0, 32) }
+      { friendlyName: "#{deviceName} @ #{os.hostname()}".substr(0, 64) }
+      { manufacturer: 'node-upnp-device' }
+      { modelName: deviceName.substr(0, 32) }
       { UDN: config.uuid }
       { serviceList: buildServiceList deviceType } ]
 

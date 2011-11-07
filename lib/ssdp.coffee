@@ -1,8 +1,10 @@
 dgram = require 'dgram'
-url = require 'url'
-http = require 'http'
-config = require './config'
-device = require './device'
+http  = require 'http'
+os    = require 'os'
+url   = require 'url'
+
+config  = require './config'
+device  = require './device'
 {debug} = require './helpers'
 
 announce = exports.announce = (dev, httpServer) ->
@@ -112,7 +114,7 @@ makeMessage = (reqType, customHeaders, dev, httpServer) ->
     new Buffer message.join '\r\n'
 
 makeServerString = (dev) ->
-    [ "OS/1.0"
+    [ "#{os.type()}/#{os.release()}"
       "UPnP/1.0"
       "#{dev.name}/1.0"
     ].join ' '
