@@ -17,7 +17,7 @@ config =
 
 # persist UUID across restarts
 try
-    config.uuid = do -> 'uuid:' + fs.readFileSync("#{__dirname}/../upnp-uuid", 'utf8')
+    config.uuid = do -> fs.readFileSync("#{__dirname}/../upnp-uuid", 'utf8')
 catch error
     config.uuid = do -> 'uuid:' + uuid()
     fs.writeFileSync("#{__dirname}/../upnp-uuid", config.uuid)
