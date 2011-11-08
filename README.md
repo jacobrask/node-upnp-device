@@ -10,6 +10,7 @@ Features so far
 
 * Generate MediaServer device and service descriptions
 * Send SSDP notifications about created device
+* Respond to SSDP search requests 
 
 Install
 -------
