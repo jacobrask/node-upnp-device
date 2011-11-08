@@ -61,7 +61,7 @@ makeNotificationHeaders = (dev) ->
     [ 'upnp:rootdevice'
       config.uuid
       device.makeDeviceType dev.type
-    ].concat config.devices[dev.type].services
+    ].concat(device.makeServiceType(s) for s in config.devices[dev.type].services)
 
 # create a UDP socket, send messages, then close socket
 sendMessages = (messages, address, port) ->
@@ -92,7 +92,7 @@ makeMessage = (reqType, customHeaders, dev, httpServer) ->
         ext: ''
         usn: config.uuid + (if config.uuid is (customHeaders.nt or customHeaders.st) then '' else '::' + (customHeaders.nt or customHeaders.st))
 
-    # specified headers are included in every request, merge them with headers passed to function
+    # these headers are included in every request, merge them with the request specific headers
     includeHeaders = ['cache-control','server','usn','location'].concat Object.keys customHeaders
 
     # build message string
@@ -105,7 +105,7 @@ makeMessage = (reqType, customHeaders, dev, httpServer) ->
     for header in includeHeaders
         message.push "#{header.toUpperCase()}: #{customHeaders[header] or defaultHeaders[header]}"
 
-    debug message.join ', '
+    debug message.join '\n      '
     # add carriage returns and new lines as required by HTTP spec
     message.push '\r\n'
     new Buffer message.join '\r\n'
@@ -125,10 +125,11 @@ makeDescriptionUrl = (s) ->
     )
 
 # parse headers using http module parser
+# this api is not documented nor stable, might break in the future
 parseHeaders = (msg, callback) ->
     parser = http.parsers.alloc()
-    parser.reinitialize('request')
+    parser.reinitialize 'request'
     parser.onIncoming = (req) ->
-        http.parsers.free(parser)
+        http.parsers.free parser
         callback null, req
     parser.execute msg, 0, msg.length
