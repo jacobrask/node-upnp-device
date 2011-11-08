@@ -21,7 +21,7 @@ listen = exports.listen = (dev, httpServer) ->
     socket = dgram.createSocket 'udp4', (msg, rinfo) ->
         parseHeaders msg, (err, req) ->
             # these are the ST (search type) values we should respond to
-            respondTo = [ 'ssdp:all', 'upnp:rootdevice', config.uuid ]
+            respondTo = [ 'ssdp:all', 'upnp:rootdevice', device.makeDeviceType(dev.type), config.uuid ]
             if req.method is 'M-SEARCH' and req.headers.st in respondTo
                 debug "Received search request from #{rinfo.address}:#{rinfo.port}"
                 # specification says to wait between 0 and MX
