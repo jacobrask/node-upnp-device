@@ -9,23 +9,35 @@ debug = helpers.debug
 createServer = exports.createServer = (deviceType, deviceName) ->
     http.createServer (req, res) ->
         debug "#{req.url} served to #{req.client.remoteAddress}"
+
+        serve = (body) ->
+            res.writeHead 200,
+                'Content-Type': 'text/xml'
+                'Content-Length': Buffer.byteLength(body)
+            res.write body
+            res.end()
+
+        error = (code) ->
+            res.writeHead code,
+                'Content-Type': 'text/plain'
+            res.write "404 Not Found"
+            res.end()
+
         if isServiceReq(req) or isDeviceReq(req)
-            res.writeHead 200, 'Content-Type': 'text/xml'
             if isServiceReq(req) and getReqAction(req) is 'description'
                 # service descriptions are static XML files
                 fs.readFile makeServicePath(getReqType(req)), (err, file) ->
                     throw err if err
-                    res.write file
-                    res.end()
+                    serve file.toString('utf8', 0, file.length)
+            else if isDeviceReq(req)
+                body = '<?xml version="1.0" encoding="utf-8"?>\n'
+                body += device.buildDescription deviceType, deviceName
+                serve(body)
             else
-                res.write '<?xml version="1.0" encoding="utf-8"?>\n'
-                if isDeviceReq(req)
-                    res.write device.buildDescription deviceType, deviceName
-                res.end()
+                error(404)
         else
-            res.writeHead 404, 'Content-Type': 'text/plain'
-            res.write '404 Not found'
-            res.end()
+            error(404)
+        
 
 # find a suitable IP/port and start listening on server
 listen = exports.listen = (server, callback) ->
