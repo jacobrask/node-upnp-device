@@ -8,10 +8,12 @@ device  = require './device'
 {debug} = require './helpers'
 
 announce = exports.announce = (dev, httpServer) ->
-    advertise dev, httpServer
+    # to "kill" any instances that haven't timed out on control points yet, first send byebye message
+    byebye dev, httpServer
+    alive dev, httpServer
     # recommended delay between advertisements is a random interval of less than half of timeout
     setInterval(
-        advertise
+        alive
         Math.floor(Math.random() * ((config.ssdp.timeout / 2) * 1000))
         dev, httpServer
     )
@@ -37,7 +39,7 @@ listen = exports.listen = (dev, httpServer) ->
     socket.bind config.ssdp.port
 
 # initial announcement
-advertise = (dev, httpServer) ->
+alive = (dev, httpServer) ->
     sendMessages(
         makeMessage(
             'notify'
@@ -58,6 +60,15 @@ answer = (req, dev, httpServer) ->
         ) for st in makeNotificationHeaders(dev)
         req.address
         req.port
+    )
+
+byebye = (dev, httpServer) ->
+    sendMessages(
+        makeMessage(
+            'notify'
+            nt: nt, nts: 'ssdp:byebye', host: null
+            dev, httpServer
+        ) for nt in makeNotificationHeaders(dev)
     )
 
 # send 3 messages about the device, and then one for each service
