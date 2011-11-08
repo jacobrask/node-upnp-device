@@ -16,6 +16,7 @@ announce = exports.announce = (dev, httpServer) ->
         dev, httpServer
     )
 
+# create socket listening for search requests
 listen = exports.listen = (dev, httpServer) ->
     socket = dgram.createSocket 'udp4', (msg, rinfo) ->
         parseHeaders msg, (err, req) ->
@@ -35,6 +36,7 @@ listen = exports.listen = (dev, httpServer) ->
     socket.addMembership config.ssdp.address
     socket.bind config.ssdp.port
 
+# initial announcement
 advertise = (dev, httpServer) ->
     sendMessages(
         makeMessage(
@@ -44,14 +46,16 @@ advertise = (dev, httpServer) ->
         ) for nt in makeNotificationHeaders(dev)
     )
 
+# answer to search requests
 answer = (req, dev, httpServer) ->
-    # unless ssdp:all, respond once with same search type as request's
+    # according to spec responses which are not ssdp:all should just reply
+    # once mirroring the ST value, but that didn't work with actual control points
     sendMessages(
         makeMessage(
             'ok'
             st: st, ext: null
             dev, httpServer
-        ) for st in (if req.searchType is 'ssdp:all' then makeNotificationHeaders(dev) else [ req.searchType ])
+        ) for st in makeNotificationHeaders(dev)
         req.address
         req.port
     )
