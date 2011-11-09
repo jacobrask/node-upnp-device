@@ -1,21 +1,18 @@
-config = require './config'
-xmlServer = require './xml-server'
 ssdp = require './ssdp'
+xmlServer = require './xml-server'
 
-upnp =
-    createDevice: (deviceName, deviceType, callback) ->
-        dev =
-            name: deviceName
-            type: deviceType
-        unless config.devices[dev.type]
-            return callback new Error "The type you specified does not exist or is not implemented in upnp-device yet."
-        unless dev.name?
-            return callback new Error "Please supply a name for your UPnP Device."
-        
-        server = xmlServer.createServer dev.type, dev.name
-        xmlServer.listen server, (err, httpServer) ->
-            ssdp.announce dev, httpServer
-            ssdp.listen dev, httpServer
+class Device
+
+    constructor: (@name) ->
+        unless @name
+            new Error "Please supply a name for your UPnP Device."
+
+    start: ->
+        server = xmlServer.createServer @type, @name
+        xmlServer.listen server, (err, httpServer) =>
+            ssdp.announce { type: @type, name: @name }, httpServer
+            ssdp.listen { type: @type, name: @name }, httpServer
             callback err
 
-module.exports = upnp
+exports.Device = Device
+exports.MediaServer = require './devices/MediaServer'
