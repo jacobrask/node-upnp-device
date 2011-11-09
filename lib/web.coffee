@@ -4,78 +4,63 @@ url  = require 'url'
 
 helpers = require './helpers'
 
-createServer = exports.createServer = (device) ->
-    http.createServer (req, res) ->
+class httpServer
+    constructor: (@device) ->
+        @server = http.createServer(@listener)
+
+    listener: (req, res) =>
         helpers.debug "#{req.url} served to #{req.client.remoteAddress}"
 
-        serve = (body) ->
-            res.writeHead 200,
-                'Content-Type': 'text/xml'
-                'Content-Length': Buffer.byteLength(body)
-            res.write body
-            res.end()
-
-        error = (code) ->
-            res.writeHead code,
-               'Content-Type': 'text/plain'
-            res.write "404 Not Found"
-            res.end()
-
-        if isServiceReq(req) or isDeviceReq(req)
-            # service descriptions are static XML files
-            if isServiceReq(req) and getReqAction(req) is 'description'
-                fs.readFile makeServicePath(getReqType(req)), 'utf8', (err, file) ->
-                    throw err if err
-                    serve file
-            else if isServiceReq(req) and getReqAction(req) is 'control'
-                if req.headers.soapaction and req.method == 'POST'
-                    data = ''
-                    req.on 'data', (chunk) ->
-                        data += chunk
-                    req.on 'end', ->
-                        ###
-                        soap.action(
-                            getReqType(req) # service type
-                            /#(\w+)/.exec(req.headers.soapaction)[1] # service action
-                            data # xml
-                        )
-                        ###
-            else if isDeviceReq(req)
-                body = '<?xml version="1.0" encoding="utf-8"?>\n'
-                body += device.buildDescription()
-                serve(body)
+        @handler req.url, (err, data) ->
+            if err?
+                res.writeHead data, 'Content-Type': 'text/plain'
+                res.write "#{data} - #{err.message}"
             else
-                error(404)
-        else
-            error(404)
-        
+                res.writeHead 200,
+                    'Content-Type': 'text/xml'
+                    'Content-Length': Buffer.byteLength(data)
+                res.write data
+            res.end()
 
-# find a suitable IP/port and start listening on server
-listen = exports.listen = (server, callback) ->
-    helpers.getNetworkIP (err, address) ->
-        return callback err if err
-        server.listen (err) ->
-            port = server.address().port
-            helpers.debug "Web server listening on http://#{address}:#{port}"
-            callback err, { address: address, port: port }
+    handler: (path, callback) ->
+        [foo, category, action, type] = path.split('/')
+        console.log path
+        switch category
+            when 'device'
+                if action isnt 'description'
+                    return callback new Error('File not found'), 404
+                body = '<?xml version="1.0" encoding="utf-8"?>\n'
+                body += @device.buildDescription()
+                callback null, body
 
-# handle requests in various ways
-parseReq = (req) ->
-    # url formats:
-    # /device/description
-    # /service/(description|control|event)/serviceType
-    path = url.parse(req.url).pathname.split('/')
-    {
-        category: path[1]
-        action: path[2]
-        type: path[3]
-    }
-getReqCategory = (req) -> parseReq(req).category
-getReqAction = (req) -> parseReq(req).action
-getReqType = (req) -> parseReq(req).type
+            when 'service'
+                switch action
+                    when 'description'
+                        # service descriptions are static XML files
+                        fs.readFile @_makeServicePath(type), 'utf8', (err, file) ->
+                            return callback err, 500 if err
+                            callback null, file
+                    when 'control'
+                        if req.headers.soapaction? and req.method == 'POST'
+                            data = ''
+                            req.on 'data', (chunk) ->
+                                data += chunk
+                            req.on 'end', ->
+                                console.log /#(\w+)/.exec(req.headers.soapaction)[1] # service action
+            else
+                callback new Error('File not found'), 404
 
-isDeviceReq = (req) -> getReqCategory(req) is 'device'
-isServiceReq = (req) -> getReqCategory(req) is 'service'
 
-makeServicePath = (serviceType) ->
-    __dirname + '/services/' + serviceType + '.xml'
+    # find internal IP and start listening on server
+    listen: (callback) ->
+        helpers.getNetworkIP (err, address) =>
+            return callback err if err
+            @server.listen (err) =>
+                port = @server.address().port
+                helpers.debug "Web server listening on http://#{address}:#{port}"
+                callback err, { address: address, port: port }
+
+    _makeServicePath: (serviceType) ->
+        __dirname + '/services/' + serviceType + '.xml'
+
+exports.createServer = (device) -> new httpServer(device)

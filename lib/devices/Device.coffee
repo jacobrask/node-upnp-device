@@ -11,11 +11,11 @@ class Device extends UPnPBase
     constructor: (@name, schema) ->
         super schema
         unless @name
-            new Error "Please supply a name for your UPnP Device."
+            return new Error "Please supply a name for your UPnP Device."
         
     start: (callback) ->
         server = web.createServer @
-        web.listen server, (err, httpServer) =>
+        server.listen (err, httpServer) =>
             ssdp.announce @, httpServer
             ssdp.listen @, httpServer
             callback err, httpServer
