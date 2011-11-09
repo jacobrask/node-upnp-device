@@ -1,18 +1,31 @@
 ssdp = require './ssdp'
-xmlServer = require './xml-server'
+web = require './web'
 
 class Device
 
     constructor: (@name) ->
         unless @name
             new Error "Please supply a name for your UPnP Device."
+        @schema =
+            prefix: 'urn:schemas-upnp-org'
+            version: '1.0'
+            upnpVersion: '1.0'
+        @
 
-    start: ->
-        server = xmlServer.createServer @type, @name
-        xmlServer.listen server, (err, httpServer) =>
-            ssdp.announce { type: @type, name: @name }, httpServer
-            ssdp.listen { type: @type, name: @name }, httpServer
-            callback err
+    start: (callback) ->
+        server = web.createServer @
+        web.listen server, (err, httpServer) =>
+            ssdp.announce @, httpServer
+            ssdp.listen @, httpServer
+            callback err, httpServer
 
 exports.Device = Device
-exports.MediaServer = require './devices/MediaServer'
+
+devices =
+    MediaServer: require "./devices/MediaServer"
+
+upnp =
+    createDevice: (name, type) ->
+        new devices[type](name)
+
+module.exports = upnp
