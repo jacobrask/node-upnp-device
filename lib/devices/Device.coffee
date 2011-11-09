@@ -1,12 +1,15 @@
+# Implements UPnP Device Architecture version 1.0
+# http://upnp.org/sdcps-and-certification/standards/device-architecture-documents/
+
 os  = require 'os'
 xml = require 'xml'
 
-config   = require '../config'
-ssdp     = require '../ssdp'
-UPnPBase = require '../UPnPBase'
-web      = require '../web'
+config = require '../config'
+ssdp   = require '../ssdp'
+httpServer = require '../httpServer'
+DeviceControlProtocol = require '../DeviceControlProtocol'
 
-class Device extends UPnPBase
+class Device extends DeviceControlProtocol
 
     constructor: (@name, schema) ->
         super schema
@@ -14,7 +17,7 @@ class Device extends UPnPBase
             return new Error "Please supply a name for your UPnP Device."
         
     start: (callback) ->
-        server = web.createServer @
+        server = httpServer.createServer @
         server.listen (err, httpServer) =>
             ssdp.announce @, httpServer
             ssdp.listen @, httpServer

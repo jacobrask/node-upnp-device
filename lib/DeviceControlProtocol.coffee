@@ -1,6 +1,8 @@
-# shared between Device and Service
+# UPnP Device Control Protocol
+# http://upnp.org/index.php/sdcps-and-certification/standards/sdcps/
+# inherited by Device and Service
 
-class UPnP
+class DeviceControlProtocol
     constructor: ->
         @schema =
             prefix: 'urn:schemas-upnp-org'
@@ -15,4 +17,4 @@ class UPnP
           @schema.version.split('.')[1]
         ].join '-'
 
-module.exports = UPnP
+module.exports = DeviceControlProtocol

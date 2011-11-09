@@ -1,3 +1,6 @@
+# Implements MediaServer:1
+# http://upnp.org/specs/av/av1/
+
 Device = require './Device'
 
 class MediaServer extends Device
