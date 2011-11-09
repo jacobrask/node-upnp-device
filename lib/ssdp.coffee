@@ -4,26 +4,25 @@ os    = require 'os'
 url   = require 'url'
 
 config  = require './config'
-device  = require './device'
 {debug} = require './helpers'
 
-announce = exports.announce = (dev, httpServer) ->
+announce = exports.announce = (device, webServer) ->
     # to "kill" any instances that haven't timed out on control points yet, first send byebye message
-    byebye dev, httpServer
-    alive dev, httpServer
+    byebye device, webServer
+    alive device, webServer
     # recommended delay between advertisements is a random interval of less than half of timeout
     setInterval(
         alive
         Math.floor(Math.random() * ((config.ssdp.timeout / 2) * 1000))
-        dev, httpServer
+        device, webServer
     )
 
 # create socket listening for search requests
-listen = exports.listen = (dev, httpServer) ->
+listen = exports.listen = (device, webServer) ->
     socket = dgram.createSocket 'udp4', (msg, rinfo) ->
         parseHeaders msg, (err, req) ->
             # these are the ST (search type) values we should respond to
-            respondTo = [ 'ssdp:all', 'upnp:rootdevice', device.makeDeviceType(dev.type), config.uuid ]
+            respondTo = [ 'ssdp:all', 'upnp:rootdevice', device.makeDeviceType(), config.uuid ]
             if req.method is 'M-SEARCH' and req.headers.st in respondTo
                 debug "Received search request from #{rinfo.address}:#{rinfo.port}"
                 # specification says to wait between 0 and MX
@@ -33,50 +32,50 @@ listen = exports.listen = (dev, httpServer) ->
                 setTimeout(
                     answer, wait
                     searchType: req.headers.st, address: rinfo.address, port: rinfo.port
-                    dev, httpServer
+                    device, webServer
                 )
     socket.addMembership config.ssdp.address
     socket.bind config.ssdp.port
 
 # initial announcement
-alive = (dev, httpServer) ->
+alive = (device, webServer) ->
     sendMessages(
         makeMessage(
             'notify'
             nt: nt, nts: 'ssdp:alive', host: null
-            dev, httpServer
-        ) for nt in makeNotificationHeaders(dev)
+            device, webServer
+        ) for nt in makeNotificationHeaders(device)
     )
 
 # answer to search requests
-answer = (req, dev, httpServer) ->
+answer = (req, device, webServer) ->
     # according to spec responses which are not ssdp:all should just reply
     # once mirroring the ST value, but that didn't work with actual control points
     sendMessages(
         makeMessage(
             'ok'
             st: st, ext: null
-            dev, httpServer
-        ) for st in makeNotificationHeaders(dev)
+            device, webServer
+        ) for st in makeNotificationHeaders(device)
         req.address
         req.port
     )
 
-byebye = (dev, httpServer) ->
+byebye = (device, webServer) ->
     sendMessages(
         makeMessage(
             'notify'
             nt: nt, nts: 'ssdp:byebye', host: null
-            dev, httpServer
-        ) for nt in makeNotificationHeaders(dev)
+            device, webServer
+        ) for nt in makeNotificationHeaders(device)
     )
 
 # send 3 messages about the device, and then one for each service
-makeNotificationHeaders = (dev) ->
+makeNotificationHeaders = (device) ->
     [ 'upnp:rootdevice'
       config.uuid
-      device.makeDeviceType dev.type
-    ].concat(device.makeServiceType(s) for s in config.devices[dev.type].services)
+      device.makeDeviceType()
+    ].concat(device.makeServiceType(s) for s in device.services)
 
 # create a UDP socket, send messages, then close socket
 sendMessages = (messages, address, port) ->
@@ -97,13 +96,13 @@ sendMessages = (messages, address, port) ->
                 socket.close()
 
 # generate SSDP (HTTPU/HTTPMU) headers suiting the message type
-makeMessage = (reqType, customHeaders, dev, httpServer) ->
+makeMessage = (reqType, customHeaders, device, webServer) ->
     # headers with static values
     defaultHeaders =
         host: "#{config.ssdp.address}:#{config.ssdp.port}"
         'cache-control': "max-age = #{config.ssdp.timeout}"
-        location: makeDescriptionUrl httpServer
-        server: makeServerString dev
+        location: makeDescriptionUrl webServer
+        server: makeServerString device
         ext: ''
         usn: config.uuid + (if config.uuid is (customHeaders.nt or customHeaders.st) then '' else '::' + (customHeaders.nt or customHeaders.st))
 
@@ -125,10 +124,10 @@ makeMessage = (reqType, customHeaders, dev, httpServer) ->
     message.push '\r\n'
     new Buffer message.join '\r\n'
 
-makeServerString = (dev) ->
+makeServerString = (device) ->
     [ "#{os.type()}/#{os.release()}"
-      "UPnP/1.0"
-      "#{dev.name}/1.0"
+      "UPnP/#{device.schema.upnpVersion}"
+      "#{device.name}/1.0"
     ].join ' '
 
 makeDescriptionUrl = (s) ->

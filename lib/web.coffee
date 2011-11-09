@@ -1,14 +1,12 @@
+fs   = require 'fs'
 http = require 'http'
-fs = require 'fs'
-url = require 'url'
-portscanner = require 'portscanner'
-device = require './device'
-helpers = require './helpers'
-debug = helpers.debug
+url  = require 'url'
 
-createServer = exports.createServer = (deviceType, deviceName) ->
+helpers = require './helpers'
+
+createServer = exports.createServer = (device) ->
     http.createServer (req, res) ->
-        debug "#{req.url} served to #{req.client.remoteAddress}"
+        helpers.debug "#{req.url} served to #{req.client.remoteAddress}"
 
         serve = (body) ->
             res.writeHead 200,
@@ -19,19 +17,32 @@ createServer = exports.createServer = (deviceType, deviceName) ->
 
         error = (code) ->
             res.writeHead code,
-                'Content-Type': 'text/plain'
+               'Content-Type': 'text/plain'
             res.write "404 Not Found"
             res.end()
 
         if isServiceReq(req) or isDeviceReq(req)
+            # service descriptions are static XML files
             if isServiceReq(req) and getReqAction(req) is 'description'
-                # service descriptions are static XML files
-                fs.readFile makeServicePath(getReqType(req)), (err, file) ->
+                fs.readFile makeServicePath(getReqType(req)), 'utf8', (err, file) ->
                     throw err if err
-                    serve file.toString('utf8', 0, file.length)
+                    serve file
+            else if isServiceReq(req) and getReqAction(req) is 'control'
+                if req.headers.soapaction and req.method == 'POST'
+                    data = ''
+                    req.on 'data', (chunk) ->
+                        data += chunk
+                    req.on 'end', ->
+                        ###
+                        soap.action(
+                            getReqType(req) # service type
+                            /#(\w+)/.exec(req.headers.soapaction)[1] # service action
+                            data # xml
+                        )
+                        ###
             else if isDeviceReq(req)
                 body = '<?xml version="1.0" encoding="utf-8"?>\n'
-                body += device.buildDescription deviceType, deviceName
+                body += device.buildDescription()
                 serve(body)
             else
                 error(404)
@@ -45,7 +56,7 @@ listen = exports.listen = (server, callback) ->
         return callback err if err
         server.listen (err) ->
             port = server.address().port
-            debug "Web server listening on http://#{address}:#{port}"
+            helpers.debug "Web server listening on http://#{address}:#{port}"
             callback err, { address: address, port: port }
 
 # handle requests in various ways

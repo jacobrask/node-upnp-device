@@ -1,4 +1,4 @@
-{Device} = require '../upnp'
+Device = require './Device'
 
 class MediaServer extends Device
 
@@ -7,13 +7,6 @@ class MediaServer extends Device
         @type = 'MediaServer'
         @version = 1
         @services = [ 'ConnectionManager', 'ContentDirectory' ]
-        @
-
-    addContentTypes: (newMimeTypes) ->
-        if @mimeTypes?
-            @mimeTypes = @mimetypes.concat newMimeTypes
-        else
-            @mimetypes = newMimeTypes
         @
 
 module.exports = MediaServer
