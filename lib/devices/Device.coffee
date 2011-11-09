@@ -7,9 +7,8 @@ xml = require 'xml'
 config = require '../config'
 ssdp   = require '../ssdp'
 httpServer = require '../httpServer'
-DeviceControlProtocol = require '../DeviceControlProtocol'
 
-class Device extends DeviceControlProtocol
+class Device extends (require '../DeviceControlProtocol')
 
     constructor: (@name, schema) ->
         super schema
@@ -51,7 +50,7 @@ class Device extends DeviceControlProtocol
 
     # build an array of all service elements
     _buildServiceList: ->
-        for serviceType in @services
+        for serviceType in Object.keys(@services)
             { service: @_buildService serviceType }
 
     # build an array of elements to generate a service XML element

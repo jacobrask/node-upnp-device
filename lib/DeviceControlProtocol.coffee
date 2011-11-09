@@ -2,7 +2,8 @@
 # http://upnp.org/index.php/sdcps-and-certification/standards/sdcps/
 # inherited by Device and Service
 
-class DeviceControlProtocol
+class DeviceControlProtocol extends (require 'events'.EventEmitter)
+
     constructor: ->
         @schema =
             prefix: 'urn:schemas-upnp-org'

@@ -46,6 +46,7 @@ class httpServer
                             req.on 'data', (chunk) ->
                                 data += chunk
                             req.on 'end', ->
+
                                 console.log /#(\w+)/.exec(req.headers.soapaction)[1] # service action
             else
                 callback new Error('File not found'), 404

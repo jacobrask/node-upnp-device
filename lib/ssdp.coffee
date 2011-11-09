@@ -75,7 +75,7 @@ makeNotificationHeaders = (device) ->
     [ 'upnp:rootdevice'
       config.uuid
       device.makeDeviceType()
-    ].concat(device.makeServiceType(s) for s in device.services)
+    ].concat(device.makeServiceType(s) for s in Object.keys(device.services))
 
 # create a UDP socket, send messages, then close socket
 sendMessages = (messages, address, port) ->
