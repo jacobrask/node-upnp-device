@@ -13,6 +13,8 @@ class Device
         @
 
     start: (callback) ->
+        unless @mimeTypes?
+            return new Error "Could not find any content types."
         server = web.createServer @
         web.listen server, (err, httpServer) =>
             ssdp.announce @, httpServer

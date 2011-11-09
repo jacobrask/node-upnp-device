@@ -9,8 +9,11 @@ class MediaServer extends Device
         @services = [ 'ConnectionManager', 'ContentDirectory' ]
         @
 
-    accept: (mimeTypes) ->
-        @mimeTypes = mimeTypes
+    addContentTypes: (newMimeTypes) ->
+        if @mimeTypes?
+            @mimeTypes = @mimetypes.concat newMimeTypes
+        else
+            @mimetypes = newMimeTypes
         @
 
 module.exports = MediaServer
