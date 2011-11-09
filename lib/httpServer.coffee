@@ -4,27 +4,39 @@ url  = require 'url'
 
 helpers = require './helpers'
 
-class httpServer
+class HttpServer
     constructor: (@device) ->
         @server = http.createServer(@listener)
 
     listener: (req, res) =>
         helpers.debug "#{req.url} served to #{req.client.remoteAddress}"
-
-        @handler req.url, (err, data) ->
-            if err?
-                res.writeHead data, 'Content-Type': 'text/plain'
-                res.write "#{data} - #{err.message}"
-            else
-                res.writeHead 200,
-                    'Content-Type': 'text/xml'
-                    'Content-Length': Buffer.byteLength(data)
-                res.write data
-            res.end()
+        if req.method is 'GET'
+            @handler req.url, (err, data) ->
+                if err?
+                    res.writeHead data, 'Content-Type': 'text/plain'
+                    res.write "#{data} - #{err.message}"
+                else
+                    res.writeHead 200,
+                        'Content-Type': 'text/xml'
+                        'Content-Length': Buffer.byteLength(data)
+                    res.write data
+                res.end()
+        else if req.method is 'POST'
+            data = ''
+            req.on 'data', (chunk) ->
+                data += chunk
+            req.on 'end', =>
+                if req.headers.soapaction
+                    [foo, serviceType, action] = ///
+                        (\w+) # serviceType
+                        :\d#
+                        (\w+) # action
+                        "$
+                    ///.exec(req.headers.soapaction)
+                    @device.services[serviceType].action(action, data)
 
     handler: (path, callback) ->
         [foo, category, action, type] = path.split('/')
-        console.log path
         switch category
             when 'device'
                 if action isnt 'description'
@@ -40,14 +52,6 @@ class httpServer
                         fs.readFile @_makeServicePath(type), 'utf8', (err, file) ->
                             return callback err, 500 if err
                             callback null, file
-                    when 'control'
-                        if req.headers.soapaction? and req.method == 'POST'
-                            data = ''
-                            req.on 'data', (chunk) ->
-                                data += chunk
-                            req.on 'end', ->
-
-                                console.log /#(\w+)/.exec(req.headers.soapaction)[1] # service action
             else
                 callback new Error('File not found'), 404
 
@@ -64,4 +68,4 @@ class httpServer
     _makeServicePath: (serviceType) ->
         __dirname + '/services/' + serviceType + '.xml'
 
-exports.createServer = (device) -> new httpServer(device)
+exports.createServer = (device) -> new HttpServer(device)
