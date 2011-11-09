@@ -1,7 +1,13 @@
-devices =
-    MediaServer: require "./devices/MediaServer"
+# Currently implemented devices
+deviceList = [ 'MediaServer' ]
 
-upnp =
-    createDevice: (name, type) -> new devices[type](name)
+devices = {}
+for deviceType in deviceList
+    # device classes are in devices/<DeviceType>.coffee
+    devices[deviceType] = require "./devices/#{deviceType}"
 
-module.exports = upnp
+exports.createDevice = (name, type) ->
+    if not type in deviceList
+        return new Error "UPnP device of type #{type} is not yet implemented."
+
+    return new devices[type](name)
