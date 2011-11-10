@@ -6,7 +6,7 @@ for deviceType in deviceList
     # device classes are in devices/<DeviceType>.coffee
     devices[deviceType] = require "./devices/#{deviceType}"
 
-exports.createDevice = (name, type) ->
+exports.createDevice = (type, name) ->
     if not type in deviceList
         return new Error "UPnP device of type #{type} is not yet implemented."
 

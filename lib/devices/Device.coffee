@@ -13,8 +13,7 @@ class Device extends (require '../DeviceControlProtocol')
 
     constructor: (@name, schema) ->
         super schema
-        unless @name
-            return new Error "Please supply a name for your UPnP Device."
+        @name ?= "Generic #{@type} device"
         @setUUID()
 
     start: (callback) ->

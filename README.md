@@ -8,9 +8,11 @@ upnp-device is currently in a ___very early development phase___. The first targ
 Features so far
 ---------------
 
-* Generate MediaServer device and service descriptions
-* Send SSDP notifications about created device
-* Respond to SSDP search requests 
+* MediaServer:1
+ * Device and service descriptions
+ * ConnectionManager service
+* SSDP notifications and replies
+
 
 Install
 -------
@@ -30,7 +32,9 @@ Node 0.4.12 recommended. upnp-device is ___not___ compatible with Node 0.6.0 due
 var upnp = require('upnp-device');
 
 // Generate an UPnP device description and announce it via SSDP
-upnp.createDevice('My Media App', 'MediaServer', function(err, server) {
+
+mediaServer = upnp.createDevice('MediaServer', 'My Media Application')
+mediaServer.start(function(err, msg) {
     if (err != null) {
         throw err;
     }
