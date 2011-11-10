@@ -6,7 +6,7 @@ helpers = require './helpers'
 
 class HttpServer
     constructor: (@device) ->
-        @server = http.createServer(@listener)
+        @server = http.createServer @listener
 
     listener: (req, res) =>
         helpers.debug "#{req.url} requested by #{req.client.remoteAddress}"

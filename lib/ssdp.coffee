@@ -8,11 +8,13 @@ url   = require 'url'
 class Ssdp
 
     constructor: (@device) ->
-        @port = 1900
-        @address = '239.255.255.250'
         @timeout = 1800
         @respondTo = [ 'ssdp:all', 'upnp:rootdevice', @device.makeDeviceType(), @device.uuid ]
-        @listen()
+        @mcPort = 1900
+        @mcAddress = '239.255.255.250'
+        @mcSocket = dgram.createSocket 'udp4', @listener
+        @mcSocket.addMembership @mcAddress
+        @mcSocket.bind @mcPort
 
     announce: ->
         # to "kill" any instances that haven't timed out on control points yet, first send byebye message
@@ -25,22 +27,19 @@ class Ssdp
         )
 
     # create socket listening for search requests
-    listen: ->
-        socket = dgram.createSocket 'udp4', (msg, rinfo) =>
-            @parseHeaders msg, (err, req) =>
-                # these are the ST (search type) values we should respond to
-                if req.method is 'M-SEARCH' and req.headers.st in @respondTo
-                    debug "Received search request from #{rinfo.address}:#{rinfo.port}"
-                    # specification says to wait between 0 and MX
-                    # (max 120) seconds before responding
-                    wait = Math.floor(Math.random() * (parseInt(req.headers.mx) + 1))
-                    wait = if wait >= 120 then 120 else wait
-                    setTimeout(
-                        @answer, wait
-                        address: rinfo.address, port: rinfo.port
-                    )
-        socket.addMembership @address
-        socket.bind @port
+    listener: (msg, rinfo) =>
+        @parseHeaders msg, (err, req) =>
+            # these are the ST (search type) values we should respond to
+            if req.method is 'M-SEARCH' and req.headers.st in @respondTo
+                debug "Received search request from #{rinfo.address}:#{rinfo.port}"
+                # specification says to wait between 0 and MX
+                # (max 120) seconds before responding
+                wait = Math.floor(Math.random() * (parseInt(req.headers.mx) + 1))
+                wait = if wait >= 120 then 120 else wait
+                setTimeout(
+                    @answer, wait
+                    address: rinfo.address, port: rinfo.port
+                )
 
     # initial announcement
     alive: ->
@@ -78,16 +77,16 @@ class Ssdp
 
     # create a UDP socket, send messages, then close socket
     sendMessages: (messages, address, port) ->
-        port ?= @port
+        port ?= @mcPort
         socket = dgram.createSocket 'udp4'
         if address?
             socket.setTTL 4
             socket.setMulticastTTL 4
-            socket.addMembership @address
+            socket.addMembership @mcAddress
         else
-            address = @address
-        socket.bind @port
-        debug "Sending #{messages.length} messages from #{@port} to #{address}:#{port}"
+            address = @mcAddress
+        socket.bind @mcPort
+        debug "Sending #{messages.length} messages to #{address}:#{port}"
         done = messages.length
         for msg in messages
             socket.send msg, 0, msg.length, port, address, ->
@@ -98,7 +97,7 @@ class Ssdp
     makeMessage: (reqType, customHeaders) ->
         # headers with static values
         defaultHeaders =
-            host: "#{@address}:#{@port}"
+            host: "#{@mcAddress}:#{@mcPort}"
             'cache-control': "max-age = #{@timeout}"
             location: @makeDescriptionUrl()
             server: @device.makeServerString()

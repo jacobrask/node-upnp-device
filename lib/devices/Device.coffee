@@ -24,8 +24,8 @@ class Device extends (require '../DeviceControlProtocol')
             @httpServerPort = serverInfo.port
 
             @ssdp = ssdp.create @
-            @ssdp.announce ->
-                callback err, ':-)'
+            @ssdp.announce()
+            callback null, ':-)'
 
     setUUID: ->
         # try to persist UUID across restarts, storing as JSON in upnp-uuid file
