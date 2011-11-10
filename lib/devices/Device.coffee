@@ -1,11 +1,12 @@
 # Implements UPnP Device Architecture version 1.0
 # http://upnp.org/sdcps-and-certification/standards/device-architecture-documents/
 
-os  = require 'os'
-xml = require 'xml'
+fs   = require 'fs'
+os   = require 'os'
+uuid = require 'node-uuid'
+xml  = require 'xml'
 
-config = require '../config'
-ssdp   = require '../ssdp'
+ssdp = require '../ssdp'
 httpServer = require '../httpServer'
 
 class Device extends (require '../DeviceControlProtocol')
@@ -14,13 +15,35 @@ class Device extends (require '../DeviceControlProtocol')
         super schema
         unless @name
             return new Error "Please supply a name for your UPnP Device."
-    
+        @setUUID()
+
     start: (callback) ->
-        server = httpServer.createServer @
-        server.listen (err, httpServer) =>
-            ssdp.announce @, httpServer
-            ssdp.listen @, httpServer
-            callback err, httpServer
+        @httpServer = httpServer.createServer @
+        @httpServer.listen (err, serverInfo) =>
+            @httpServerAddress = serverInfo.address
+            @httpServerPort = serverInfo.port
+
+            @ssdp = ssdp.create @
+            @ssdp.announce ->
+                callback err, ':-)'
+
+    setUUID: ->
+        # try to persist UUID across restarts, storing as JSON in upnp-uuid file
+        try
+            data = fs.readFileSync("#{__dirname}/../../upnp-uuid", 'utf8')
+            data = JSON.parse data
+        catch error
+            data = {}
+            data[@type] = {}
+
+        if data[@type][@name]
+            @uuid = data[@type][@name]
+        else
+            @uuid = 'uuid:' + uuid()
+            data[@type] ?= {}
+            data[@type][@name] = @uuid
+        fs.writeFileSync("#{__dirname}/../../upnp-uuid", JSON.stringify(data))
+
 
     # build device description element
     buildDescription: (callback) ->
@@ -46,7 +69,7 @@ class Device extends (require '../DeviceControlProtocol')
           { friendlyName: "#{@name} @ #{os.hostname()}".substr(0, 64) }
           { manufacturer: 'node-upnp-device' }
           { modelName: @name.substr(0, 32) }
-          { UDN: config.uuid }
+          { UDN: @uuid }
           { serviceList: @buildServiceList() } ]
 
     # build an array of all service elements
