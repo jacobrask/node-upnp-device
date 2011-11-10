@@ -6,23 +6,34 @@ xml2js = require 'xml2js'
 
 class Service extends (require '../DeviceControlProtocol')
 
-    constructor: (@type) ->
+    constructor: (@device) ->
         @xmlParser = new xml2js.Parser()
 
-    action: (action, data) ->
-        parser.parseString data, (err, data) ->
-            @[action](data['s:Body']["u:#{actionName}"])
+    action: (action, data, callback) ->
+        @xmlParser.parseString data, (err, data) =>
+            options = data['s:Body']["u:#{action}"]
+            @[action] options, (err, data) ->
+                callback null, data
+
+
+    buildSoapResponse: (action, args) ->
+        body = {}
+        body[action] = [
+            _attr:
+                'xmlns:u': @makeServiceType @type
+        ]
+        for arg in args
+            body[action].push arg
+
+        res = '<?xml version="1.0"?>'
+        res += xml [
+            's:Envelope': [
+                _attr:
+                    'xmlns:s': 'http://schemas.xmlsoap.org/soap/envelope/'
+                    's:encodingStyle': 'http://schemas.xmlsoap.org/soap/encoding/'
+                { 's:Body': [ body ] }
+            ]
+        ]
+        return res
 
 module.exports = Service
-
-###
-makeActionResponse = exports.makeActionResponse = (serviceType, action) ->
-    xml [
-        's:Envelope': [
-            _attr:
-                'xmlns:s': 'http://schemas.xmlsoap.org/soap/envelope/'
-                's:encodingStyle': 'http://schemas.xmlsoap.org/soap/encoding/'
-            { 's:Body': [ { foo: 'bar' } ] }
-        ]
-    ]
-###

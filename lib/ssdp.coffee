@@ -102,7 +102,7 @@ makeMessage = (reqType, customHeaders, device, webServer) ->
         host: "#{config.ssdp.address}:#{config.ssdp.port}"
         'cache-control': "max-age = #{config.ssdp.timeout}"
         location: makeDescriptionUrl webServer
-        server: makeServerString device
+        server: device.makeServerString()
         ext: ''
         usn: config.uuid + (if config.uuid is (customHeaders.nt or customHeaders.st) then '' else '::' + (customHeaders.nt or customHeaders.st))
 
@@ -119,16 +119,10 @@ makeMessage = (reqType, customHeaders, device, webServer) ->
     for header in includeHeaders
         message.push "#{header.toUpperCase()}: #{customHeaders[header] or defaultHeaders[header]}"
 
-    debug message.join '\n      '
+    debug message.join '|'
     # add carriage returns and new lines as required by HTTP spec
     message.push '\r\n'
     new Buffer message.join '\r\n'
-
-makeServerString = (device) ->
-    [ "#{os.type()}/#{os.release()}"
-      "UPnP/#{device.schema.upnpVersion}"
-      "#{device.name}/1.0"
-    ].join ' '
 
 makeDescriptionUrl = (s) ->
     url.format(

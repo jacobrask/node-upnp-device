@@ -9,49 +9,52 @@ class HttpServer
         @server = http.createServer(@listener)
 
     listener: (req, res) =>
-        helpers.debug "#{req.url} served to #{req.client.remoteAddress}"
-        if req.method is 'GET'
-            @handler req.url, (err, data) ->
-                if err?
-                    res.writeHead data, 'Content-Type': 'text/plain'
-                    res.write "#{data} - #{err.message}"
-                else
-                    res.writeHead 200,
-                        'Content-Type': 'text/xml'
-                        'Content-Length': Buffer.byteLength(data)
-                    res.write data
-                res.end()
-        else if req.method is 'POST'
-            data = ''
-            req.on 'data', (chunk) ->
-                data += chunk
-            req.on 'end', =>
-                if req.headers.soapaction
-                    [foo, serviceType, action] = ///
-                        (\w+) # serviceType
-                        :\d#
-                        (\w+) # action
-                        "$
-                    ///.exec(req.headers.soapaction)
-                    @device.services[serviceType].action(action, data)
+        helpers.debug "#{req.url} requested by #{req.client.remoteAddress}"
+        @handler req, (err, data) =>
+            if err?
+                res.writeHead data, 'CONTENT-TYPE': 'text/plain'
+                res.write "#{data} - #{err.message}"
+            else
+                res.writeHead 200,
+                    'CONTENT-TYPE': 'text/xml; charset="utf-8"'
+                    'CONTENT-LENGTH': Buffer.byteLength(data)
+                    'EXT': ''
+                    'SERVER': @device.makeServerString()
+                res.write data
+            res.end()
 
-    handler: (path, callback) ->
-        [foo, category, action, type] = path.split('/')
+    handler: (req, callback) ->
+        [foo, category, action, type] = req.url.split('/')
         switch category
             when 'device'
                 if action isnt 'description'
-                    return callback new Error('File not found'), 404
-                body = '<?xml version="1.0" encoding="utf-8"?>\n'
-                body += @device.buildDescription()
-                callback null, body
+                    return callback new Error('Not Found'), 404
+                @device.buildDescription (err, desc) ->
+                    return callback err, 500 if err
+                    callback null, desc
 
             when 'service'
                 switch action
                     when 'description'
                         # service descriptions are static XML files
-                        fs.readFile @_makeServicePath(type), 'utf8', (err, file) ->
+                        fs.readFile @makeServicePath(type), 'utf8', (err, file) ->
                             return callback err, 500 if err
                             callback null, file
+                    when 'control'
+                        if req.method isnt 'POST' or not req.headers.soapaction?
+                            callback new Error('Method Not Allowed'), 405
+                        data = ''
+                        req.on 'data', (chunk) ->
+                            data += chunk
+                        req.on 'end', =>
+                            [foo, serviceType, serviceAction] = ///
+                                (\w+) # service type
+                                :\d#
+                                (\w+) # service action
+                                "$
+                            ///.exec(req.headers.soapaction)
+                            @device.services[serviceType].action serviceAction, data, (err, soapResponse) ->
+                                callback err, soapResponse
             else
                 callback new Error('File not found'), 404
 
@@ -65,7 +68,7 @@ class HttpServer
                 helpers.debug "Web server listening on http://#{address}:#{port}"
                 callback err, { address: address, port: port }
 
-    _makeServicePath: (serviceType) ->
+    makeServicePath: (serviceType) ->
         __dirname + '/services/' + serviceType + '.xml'
 
 exports.createServer = (device) -> new HttpServer(device)

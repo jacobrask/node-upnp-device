@@ -14,7 +14,7 @@ class Device extends (require '../DeviceControlProtocol')
         super schema
         unless @name
             return new Error "Please supply a name for your UPnP Device."
-        
+    
     start: (callback) ->
         server = httpServer.createServer @
         server.listen (err, httpServer) =>
@@ -23,52 +23,49 @@ class Device extends (require '../DeviceControlProtocol')
             callback err, httpServer
 
     # build device description element
-    buildDescription: ->
-        console.dir @
-        xml [
-            root: [
-                _attr:
-                    xmlns: @_makeNS 'device'
-                { specVersion: @_buildSpecVersion() }
-                { device: @_buildDevice() }
+    buildDescription: (callback) ->
+        desc = '<?xml version="1.0" encoding="utf-8"?>'
+        desc += xml [
+                root: [
+                    _attr:
+                        xmlns: @makeNS 'device'
+                    { specVersion: @buildSpecVersion() }
+                    { device: @buildDevice() }
+                ]
             ]
-        ]
+        callback null, desc
 
     # build spec version element
-    _buildSpecVersion: ->
+    buildSpecVersion: ->
         [ { major: @schema.upnpVersion.split('.')[0] }
           { minor: @schema.upnpVersion.split('.')[1] } ]
 
     # build device element
-    _buildDevice: ->
+    buildDevice: ->
         [ { deviceType: @makeDeviceType() }
           { friendlyName: "#{@name} @ #{os.hostname()}".substr(0, 64) }
           { manufacturer: 'node-upnp-device' }
           { modelName: @name.substr(0, 32) }
           { UDN: config.uuid }
-          { serviceList: @_buildServiceList() } ]
+          { serviceList: @buildServiceList() } ]
 
     # build an array of all service elements
-    _buildServiceList: ->
+    buildServiceList: ->
         for serviceType in Object.keys(@services)
-            { service: @_buildService serviceType }
+            { service: @buildService serviceType }
 
     # build an array of elements to generate a service XML element
-    _buildService: (serviceType) ->
+    buildService: (serviceType) ->
         [ { serviceType: @makeServiceType serviceType }
           { serviceId: 'urn:upnp-org:serviceId:' + serviceType }
           { SCPDURL: '/service/description/' + serviceType }
           { controlURL: '/service/control/' + serviceType }
           { eventSubURL: '/service/event/' + serviceType } ]
 
-    # make service/device type string for ssdp and device description
-    _makeType: (category, type) ->
-        [ @schema.prefix
-          category
-          type || @type
-          @version
-        ].join ':'
-    makeDeviceType: -> @_makeType 'device'
-    makeServiceType: (type) -> @_makeType 'service', type
+    makeServerString: ->
+        [ "#{os.type()}/#{os.release()}"
+          "UPnP/#{@schema.upnpVersion}"
+          "#{@name}/1.0"
+        ].join ' '
 
 module.exports = Device
