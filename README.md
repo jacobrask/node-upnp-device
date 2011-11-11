@@ -33,13 +33,13 @@ var upnp = require('upnp-device');
 
 // Generate an UPnP device description and announce it via SSDP
 
-mediaServer = upnp.createDevice('MediaServer', 'My Media Application')
-mediaServer.start(function(err, msg) {
-    if (err != null) {
-        throw err;
-    }
-    console.log('Device successfully started');
-});
+upnp.createDevice('MediaServer', 'My Media Application', startDevice);
+
+var startDevice = function(err, device) {
+    device.start(function(err, msg) {
+        console.log(msg);
+    });
+};
 ```
 
 See also
