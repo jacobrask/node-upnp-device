@@ -4,7 +4,7 @@
 xml    = require 'xml'
 xml2js = require 'xml2js'
 
-class Service extends (require '../DeviceControlProtocol')
+class Service
 
     constructor: (@device) ->
         @xmlParser = new xml2js.Parser()

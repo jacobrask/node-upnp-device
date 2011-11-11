@@ -6,13 +6,17 @@ os   = require 'os'
 uuid = require 'node-uuid'
 xml  = require 'xml'
 
+protocol = require '../protocol'
 ssdp = require '../ssdp'
 httpServer = require '../httpServer'
 
-class Device extends (require '../DeviceControlProtocol')
+class Device
 
-    constructor: (@name, schema) ->
-        super schema
+    constructor: (@name) ->
+        @schema =
+            prefix: 'urn:schemas-upnp-org'
+            version: '1.0'
+            upnpVersion: '1.0'
         @name ?= "Generic #{@type} device"
         @setUUID()
 
@@ -50,7 +54,7 @@ class Device extends (require '../DeviceControlProtocol')
         desc += xml [
                 root: [
                     _attr:
-                        xmlns: @makeNS 'device'
+                        xmlns: protocol.makeNameSpace()
                     { specVersion: @buildSpecVersion() }
                     { device: @buildDevice() }
                 ]
@@ -64,7 +68,7 @@ class Device extends (require '../DeviceControlProtocol')
 
     # build device element
     buildDevice: ->
-        [ { deviceType: @makeDeviceType() }
+        [ { deviceType: protocol.makeDeviceType(@type, @version) }
           { friendlyName: "#{@name} @ #{os.hostname()}".substr(0, 64) }
           { manufacturer: 'node-upnp-device' }
           { modelName: @name.substr(0, 32) }
@@ -78,7 +82,7 @@ class Device extends (require '../DeviceControlProtocol')
 
     # build an array of elements to generate a service XML element
     buildService: (serviceType) ->
-        [ { serviceType: @makeServiceType serviceType }
+        [ { serviceType: protocol.makeServiceType(serviceType, @version) }
           { serviceId: 'urn:upnp-org:serviceId:' + serviceType }
           { SCPDURL: '/service/description/' + serviceType }
           { controlURL: '/service/control/' + serviceType }

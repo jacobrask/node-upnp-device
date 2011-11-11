@@ -1,10 +1,11 @@
 # Implements MediaServer:1
 # http://upnp.org/specs/av/av1/
 
+Device = require './Device'
 services =
     ConnectionManager: require '../services/ConnectionManager'
 
-class MediaServer extends (require './Device')
+class MediaServer extends Device
 
     constructor: (name, schema) ->
         @type = 'MediaServer'

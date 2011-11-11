@@ -3,13 +3,17 @@ http  = require 'http'
 os    = require 'os'
 url   = require 'url'
 
+protocol = require './protocol'
 {debug} = require './helpers'
 
 class Ssdp
 
     constructor: (@device) ->
         @timeout = 1800
-        @respondTo = [ 'ssdp:all', 'upnp:rootdevice', @device.makeDeviceType(), @device.uuid ]
+        @respondTo = [
+            'ssdp:all'
+            'upnp:rootdevice'
+            protocol.makeDeviceType(@device.type, @device.version), @device.uuid ]
         @mcPort = 1900
         @mcAddress = '239.255.255.250'
         @mcSocket = dgram.createSocket 'udp4', @listener
@@ -72,8 +76,8 @@ class Ssdp
     makeNotificationHeaders: ->
         [ 'upnp:rootdevice'
           @device.uuid
-          @device.makeDeviceType()
-        ].concat(@device.makeServiceType(s) for s in Object.keys(@device.services))
+          protocol.makeDeviceType(@device.type, @device.version)
+        ].concat(protocol.makeServiceType(s, @device.version) for s in Object.keys(@device.services))
 
     # create a UDP socket, send messages, then close socket
     sendMessages: (messages, address, port) ->

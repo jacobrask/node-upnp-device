@@ -9,5 +9,4 @@ for deviceType in deviceList
 exports.createDevice = (type, name, callback) ->
     unless type in deviceList
         callback new Error "UPnP device of type #{type} is not yet implemented."
-
     callback null, new devices[type](name)
