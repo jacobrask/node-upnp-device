@@ -3,6 +3,7 @@ http = require 'http'
 url  = require 'url'
 
 helpers = require './helpers'
+httpu   = require './httpu'
 
 class HttpServer
     constructor: (@device) ->
@@ -19,7 +20,7 @@ class HttpServer
                     'CONTENT-TYPE': 'text/xml; charset="utf-8"'
                     'CONTENT-LENGTH': Buffer.byteLength(data)
                     'EXT': ''
-                    'SERVER': @device.makeServerString()
+                    'SERVER': httpu.makeServerString(@device.name)
                 res.write data
             res.end()
 

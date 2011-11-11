@@ -23,8 +23,8 @@ class Device
     start: (callback) ->
         @httpServer = httpServer.createServer @
         @httpServer.listen (err, serverInfo) =>
-            @httpServerAddress = serverInfo.address
-            @httpServerPort = serverInfo.port
+            @httpAddress = serverInfo.address
+            @httpPort = serverInfo.port
 
             @ssdp = ssdp.create @
             @ssdp.announce()
@@ -87,11 +87,5 @@ class Device
           { SCPDURL: '/service/description/' + serviceType }
           { controlURL: '/service/control/' + serviceType }
           { eventSubURL: '/service/event/' + serviceType } ]
-
-    makeServerString: ->
-        [ "#{os.type()}/#{os.release()}"
-          "UPnP/#{@schema.upnpVersion}"
-          "#{@name}/1.0"
-        ].join ' '
 
 module.exports = Device
