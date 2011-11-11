@@ -25,9 +25,8 @@ class Device
         @httpServer.listen (err, serverInfo) =>
             @httpAddress = serverInfo.address
             @httpPort = serverInfo.port
-
-            @ssdp = ssdp.create @
-            @ssdp.announce()
+            ssdp.listen @
+            ssdp.announce @
             callback null, ':-)'
 
     setUUID: ->
