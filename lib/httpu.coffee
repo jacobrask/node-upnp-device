@@ -45,11 +45,21 @@ httpu.makeMessage = (reqType, customHeaders, device, ssdp) ->
     new Buffer message.join '\r\n'
 
 # send 3 messages about the device, and then one for each service
-httpu.makeNotificationHeaders = (device) ->
+httpu.makeNotificationTypes = (device) ->
     [ 'upnp:rootdevice'
       device.uuid
       protocol.makeDeviceType(device.type, device.version)
     ].concat(protocol.makeServiceType(s, device.version) for s in Object.keys(device.services))
+
+httpu.parseRequest = (msg, rinfo, callback) ->
+    httpu.parseHeaders msg, (err, req) ->
+        callback null, {
+            method: req.method
+            maxWait: req.headers.mx
+            searchType: req.headers.st
+            address: rinfo.address
+            port: rinfo.port
+        }
 
 # parse headers using http module parser
 # this api is not documented nor stable, might break in the future

@@ -16,14 +16,13 @@ class Ssdp
             @device.uuid ]
         @mcPort = 1900
         @mcAddress = '239.255.255.250'
-        @mcSocket = dgram.createSocket 'udp4', @listener
-        @mcSocket.addMembership @mcAddress
-        @mcSocket.bind @mcPort
+        @listen()
 
     announce: ->
         # to "kill" any instances that haven't timed out on control points yet, first send byebye message
-        @byebye()
-        @alive()
+        @notify('byebye')
+        @notify('alive')
+
         # recommended delay between advertisements is a random interval of less than half of timeout
         setInterval(
             @alive
@@ -31,50 +30,39 @@ class Ssdp
         )
 
     # create socket listening for search requests
-    listener: (msg, rinfo) =>
-        httpu.parseHeaders msg, (err, req) =>
-            # these are the ST (search type) values we should respond to
-            if req.method is 'M-SEARCH' and req.headers.st in @respondTo
-                helpers.debug "Received search request from #{rinfo.address}:#{rinfo.port}"
-                # specification says to wait between 0 and MX
-                # (max 120) seconds before responding
-                wait = Math.floor(Math.random() * (parseInt(req.headers.mx) + 1))
-                wait = if wait >= 120 then 120 else wait
-                setTimeout(
-                    @answer, wait
-                    address: rinfo.address, port: rinfo.port
-                )
+    listen: ->
+        socket = dgram.createSocket 'udp4', (msg, rinfo) =>
+            httpu.parseRequest msg, rinfo, (err, req) =>
+                if req.method is 'M-SEARCH' and req.searchType in @respondTo
+                    @answerAfter(req.maxWait, req.address, req.port)
+        socket.addMembership(@mcAddress)
+        socket.bind(@mcPort)
 
-    # initial announcement
-    alive: ->
+    answerAfter: (maxWait, address, port) ->
+        # specification says to wait between 0 and MX seconds before reply
+        wait = Math.floor(Math.random() * (parseInt(maxWait)) * 1000)
+        helpers.debug "Replying to search request from #{address}:#{port} in #{wait}ms"
+        setTimeout(@answer, wait, address, port)
+
+    notify: (subtype) ->
         @sendMessages(
             httpu.makeMessage(
                 'notify'
-                nt: nt, nts: 'ssdp:alive', host: null
+                nt: nt, nts: "ssdp:#{subtype}", host: null
                 @device
-            ) for nt in httpu.makeNotificationHeaders(@device)
+            ) for nt in httpu.makeNotificationTypes(@device)
         )
 
-    answer: ->
+    answer: (address, port) =>
         @sendMessages(
             httpu.makeMessage(
                 'ok'
                 st: st, ext: null
                 @device
-            ) for st in httpu.makeNotificationHeaders(@device)
+            ) for st in httpu.makeNotificationTypes(@device)
             address
             port
         )
-
-    byebye: ->
-        @sendMessages(
-            httpu.makeMessage(
-                'notify'
-                nt: nt, nts: 'ssdp:byebye', host: null
-                @device
-            ) for nt in httpu.makeNotificationHeaders(@device)
-        )
-
 
     # create a UDP socket, send messages, then close socket
     sendMessages: (messages, address, port) ->
