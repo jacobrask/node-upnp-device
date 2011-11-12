@@ -7,6 +7,7 @@ url  = require 'url'
 
 helpers = require './helpers'
 httpu   = require './httpu'
+xml     = require './xml'
 
 # `@` is bound to Device for functions depending on Device state.
 exports.start = (callback) ->
@@ -37,7 +38,7 @@ exports.start = (callback) ->
             when 'device'
                 if action isnt 'description'
                     return callback new Error('Not Found'), 404
-                @buildDescription (err, desc) ->
+                @_buildDescription (err, desc) ->
                     return callback err, 500 if err
                     callback null, desc
 

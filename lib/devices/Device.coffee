@@ -5,11 +5,11 @@
 fs   = require 'fs'
 os   = require 'os'
 uuid = require 'node-uuid'
-xml  = require 'xml'
 
 protocol = require '../protocol'
 ssdp = require '../ssdp'
 httpServer = require '../httpServer'
+xml  = require '../xml'
 
 # Using CoffeeScript's `class` for convenience.
 class Device
@@ -28,7 +28,7 @@ class Device
 
     # Start HTTP server and SSDP handler.
     start: (callback) ->
-        @startServer (err, serverInfo) =>
+        @_startServer (err, serverInfo) =>
             @httpAddress = serverInfo.address
             @httpPort = serverInfo.port
             ssdp.listen @
@@ -36,7 +36,8 @@ class Device
             callback null, ':-)'
         @
 
-    startServer: httpServer.start
+    _startServer: httpServer.start
+    _buildDescription: xml.buildDescription
 
     # Try to persist UUID, otherwise Control Points won't know it's the same
     # device on restarts. We attempt to store UUIDs as JSON in a file called
@@ -61,44 +62,6 @@ class Device
                 fs.writeFile uuidFile, JSON.stringify(data)
                 callback null, uuid
 
-    # build device description element
-    buildDescription: (callback) ->
-        desc = '<?xml version="1.0" encoding="utf-8"?>'
-        desc += xml [
-                root: [
-                    _attr:
-                        xmlns: protocol.makeNameSpace()
-                    { specVersion: @buildSpecVersion() }
-                    { device: @buildDevice() }
-                ]
-            ]
-        callback null, desc
 
-    # build spec version element
-    buildSpecVersion: ->
-        [ { major: @schema.upnpVersion.split('.')[0] }
-          { minor: @schema.upnpVersion.split('.')[1] } ]
-
-    # build device element
-    buildDevice: ->
-        [ { deviceType: protocol.makeDeviceType(@type, @version) }
-          { friendlyName: "#{@name} @ #{os.hostname()}".substr(0, 64) }
-          { manufacturer: 'node-upnp-device' }
-          { modelName: @name.substr(0, 32) }
-          { UDN: @uuid }
-          { serviceList: @buildServiceList() } ]
-
-    # build an array of all service elements
-    buildServiceList: ->
-        for serviceType in Object.keys(@services)
-            { service: @buildService serviceType }
-
-    # build an array of elements to generate a service XML element
-    buildService: (serviceType) ->
-        [ { serviceType: protocol.makeServiceType(serviceType, @version) }
-          { serviceId: 'urn:upnp-org:serviceId:' + serviceType }
-          { SCPDURL: '/service/description/' + serviceType }
-          { controlURL: '/service/control/' + serviceType }
-          { eventSubURL: '/service/event/' + serviceType } ]
 
 module.exports = Device
