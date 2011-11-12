@@ -1,8 +1,8 @@
-# XML helpers. If they depend on Device state they will be exported and
-# added as Device prototypes.
+# XML helpers for SOAP and Device descriptions.
+# Exported and added as Device or Service prototypes.
 
-os   = require 'os'
-xml  = require 'xml'
+os  = require 'os'
+xml = require 'xml'
 
 protocol   = require './protocol'
 
@@ -18,7 +18,7 @@ exports.buildDescription = (callback) ->
     buildDevice = =>
         [ { deviceType: protocol.makeDeviceType(@type, @version) }
           { friendlyName: "#{@name} @ #{os.hostname()}".substr(0, 64) }
-          { manufacturer: 'node-upnp-device' }
+          { manufacturer: 'UPnP Device for Node.js' }
           { modelName: @name.substr(0, 32) }
           { UDN: @uuid }
           { serviceList: buildServiceList() } ]
