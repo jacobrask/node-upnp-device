@@ -35,5 +35,4 @@ class Device
 
     _buildDescription: xml.buildDescription
 
-
 module.exports = Device
