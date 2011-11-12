@@ -26,15 +26,17 @@ class Device
             callback null, @
         @
 
+    # Start HTTP server and SSDP handler.
     start: (callback) ->
-        @httpServer = httpServer.createServer @
-        @httpServer.listen (err, serverInfo) =>
+        @startServer (err, serverInfo) =>
             @httpAddress = serverInfo.address
             @httpPort = serverInfo.port
             ssdp.listen @
             ssdp.announce @
             callback null, ':-)'
         @
+
+    startServer: httpServer.start
 
     # Try to persist UUID, otherwise Control Points won't know it's the same
     # device on restarts. We attempt to store UUIDs as JSON in a file called
