@@ -1,6 +1,4 @@
-# SSDP helpers. If they depend on Device state they will be exported and
-# added as Device prototypes. Messages use HTTP and are generated in the
-# `httpu` module.
+# SSDP helpers. Messages use HTTP and are generated in the `httpu` module.
 
 dgram = require 'dgram'
 os    = require 'os'
@@ -33,22 +31,12 @@ exports.start = (callback) ->
 
     # Wait between 0 and maxWait seconds before answering to avoid
     # flooding control points.
-    answerAfter = (maxWait, address, port, device) =>
+    answerAfter = (maxWait, address, port) =>
         wait = Math.floor(Math.random() * (parseInt(maxWait)) * 1000)
         console.info "Replying to search request from #{address}:#{port}
  in #{wait}ms."
         setTimeout(answer, wait, address, port)
 
-    answer = (address, port) =>
-        sendMessages(
-            httpu.makeMessage(
-                'ok'
-                st: st, ext: null
-                @
-            ) for st in httpu.makeNotificationTypes(@)
-            address
-            port
-        )
 
     # Create a UDP socket, send messages, then close socket.
     sendMessages = (messages, address = '239.255.255.250', port = 1900) ->
@@ -76,13 +64,27 @@ exports.start = (callback) ->
             'alive'
         )
 
+    # Possible subtypes are 'alive' or 'byebye'.
     notify = (subtype) =>
         sendMessages(
-            httpu.makeMessage(
+            httpu.makeSSDPMessage.call(
+                @
                 'notify'
                 nt: nt, nts: "ssdp:#{subtype}", host: null
-                @
-            ) for nt in httpu.makeNotificationTypes(@)
+            ) for nt in httpu.makeNotificationTypes.call @
         )
+
+    answer = (address, port) =>
+        sendMessages(
+            httpu.makeSSDPMessage.call(
+                @
+                'ok'
+                st: st, ext: null
+            ) for st in httpu.makeNotificationTypes.call @
+            address
+            port
+        )
+
+
     listen()
     announce()

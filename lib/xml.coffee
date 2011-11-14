@@ -11,8 +11,8 @@ exports.buildDescription = (callback) ->
 
     # Build `specVersion` element.
     buildSpecVersion = =>
-        [ { major: @schema.upnpVersion.split('.')[0] }
-          { minor: @schema.upnpVersion.split('.')[1] } ]
+        [ { major: @upnpVersion.split('.')[0] }
+          { minor: @upnpVersion.split('.')[1] } ]
 
     # Build `device` element.
     buildDevice = =>

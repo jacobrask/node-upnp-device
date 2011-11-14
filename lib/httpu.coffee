@@ -1,4 +1,4 @@
-# HTTP over UDP helper functions
+# HTTP message/header generation.
 
 http = require 'http'
 os   = require 'os'
@@ -6,32 +6,36 @@ url  = require 'url'
 
 protocol = require './protocol'
 
-(console[c] = ->) for c in ['log','info'] unless /upnp-device/.test process.env.NODE_DEBUG
+unless /upnp-device/.test process.env.NODE_DEBUG
+    (console[c] = ->) for c in ['log','info']
 
 httpu = {}
 
-# generate HTTP headers suiting the message type
-httpu.makeMessage = (reqType, customHeaders, device, ssdp) ->
-    console.log "Making #{reqType} message with #{(key + ':' + val) for key, val of customHeaders}"
-    # SSDP defaults
-    ssdp ?= {}
-    ssdp.address = '239.255.255.250'
-    ssdp.port = 1900
-    ssdp.timeout = 1800
+# Generate HTTP headers suiting the SSDP message type.
+httpu.makeSSDPMessage = (reqType, customHeaders) ->
+    console.log "Making #{reqType} message with
+ #{(key + ':' + val) for key, val of customHeaders}"
+    # SSDP defaults.
+    ssdp =
+        address: '239.255.255.250'
+        port: 1900
+        timeout: 1800
 
-    # headers with static values
+    # Headers with static values.
     defaultHeaders =
         host: "#{ssdp.address}:#{ssdp.port}"
         'cache-control': "max-age = #{ssdp.timeout}"
-        location: makeDescriptionUrl(device.httpAddress, device.httpPort)
-        server: httpu.makeServerString(device.name)
+        location: makeDescriptionUrl(@httpAddress, @httpPort)
+        server: httpu.makeServerString.call @
         ext: ''
-        usn: device.uuid + (if device.uuid is (customHeaders.nt or customHeaders.st) then '' else '::' + (customHeaders.nt or customHeaders.st))
+        usn: @uuid + (if @uuid is (customHeaders.nt or customHeaders.st) then '' else '::' + (customHeaders.nt or customHeaders.st))
 
-    # these headers are included in every request, merge them with the request specific headers
-    includeHeaders = ['cache-control','server','usn','location'].concat Object.keys customHeaders
+    # These headers are included in every request.
+    includeHeaders = ['cache-control','server','usn','location'].concat(
+        Object.keys customHeaders
+    )
 
-    # build message string
+    # Build message string.
     message =
         if reqType is 'ok'
             [ "HTTP/1.1 200 OK" ]
@@ -39,18 +43,29 @@ httpu.makeMessage = (reqType, customHeaders, device, ssdp) ->
             [ "#{reqType.toUpperCase()} * HTTP/1.1" ]
 
     for header in includeHeaders
-        message.push "#{header.toUpperCase()}: #{customHeaders[header] or defaultHeaders[header]}"
+        message.push "#{header.toUpperCase()}:
+ #{customHeaders[header] or defaultHeaders[header]}"
 
-    # add carriage returns and new lines as required by HTTP spec
+    # Add carriage returns and newlines as required by HTTP spec.
     message.push '\r\n'
     new Buffer message.join '\r\n'
 
-# send 3 messages about the device, and then one for each service
-httpu.makeNotificationTypes = (device) ->
+# 3 messages about the device, and 1 for each service.
+httpu.makeNotificationTypes = ->
     [ 'upnp:rootdevice'
-      device.uuid
-      protocol.makeDeviceType.call device
-    ].concat(protocol.makeServiceType(s, device.version) for s in Object.keys(device.services))
+      @uuid
+      protocol.makeDeviceType.call @
+    ].concat(
+        protocol.makeServiceType(s, @version) for s in Object.keys(@services)
+    )
+
+# UPnP Device info for `SERVER` header.
+httpu.makeServerString = ->
+    [ "#{os.type()}/#{os.release()}"
+      "UPnP/#{@upnpVersion}"
+      "#{@name}/1.0"
+    ].join ' '
+
 
 httpu.parseRequest = (msg, rinfo, callback) ->
     httpu.parseHeaders msg, (err, req) ->
@@ -62,8 +77,8 @@ httpu.parseRequest = (msg, rinfo, callback) ->
             port: rinfo.port
         }
 
-# parse headers using http module parser
-# this api is not documented nor stable, might break in the future
+# Parse SSDP headers using the HTTP module parser.
+# This API is not documented and not guaranteed to be stable.
 httpu.parseHeaders = (msg, callback) ->
     parser = http.parsers.alloc()
     parser.reinitialize 'request'
@@ -72,11 +87,6 @@ httpu.parseHeaders = (msg, callback) ->
         callback null, req
     parser.execute msg, 0, msg.length
 
-httpu.makeServerString = (deviceName, upnpVersion = '1.0') ->
-    [ "#{os.type()}/#{os.release()}"
-      "UPnP/#{upnpVersion}"
-      "#{deviceName}/1.0"
-    ].join ' '
 
 makeDescriptionUrl = (address, port)->
     url.format(

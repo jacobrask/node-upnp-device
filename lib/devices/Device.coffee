@@ -16,7 +16,7 @@ class Device
         @schema =
             prefix: 'urn:schemas-upnp-org'
             version: '1.0'
-            upnpVersion: '1.0'
+        @upnpVersion = '1.0'
 
         helpers.getUuid.call @, (err, uuid) =>
             @uuid = "uuid:#{uuid}"

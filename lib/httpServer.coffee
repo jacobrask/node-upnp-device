@@ -11,16 +11,18 @@ xml     = require './xml'
 
 (console[c] = ->) for c in ['log','info'] unless /upnp-device/.test process.env.NODE_DEBUG
 
-# `@` is bound to Device for functions depending on Device state.
+# `@` should be bound to a Device.
 exports.start = (callback) ->
 
     server = http.createServer (req, res) =>
-        console.log "#{req.url} requested by #{req.client.remoteAddress}"
+        # Request listener.
+        console.log "#{req.url} requested by #{req.headers['user-agent']}
+ at #{req.client.remoteAddress}."
         handler req, (err, data) =>
             if err?
                 # On error, `data` is an error code. Very rudimentary error
                 # handling, as it is not intended for humans anyway.
-                console.warn "Responded with #{data}: #{err.message} for #{req.url}"
+                console.warn "Responded with #{data}: #{err.message} for #{req.url}."
                 res.writeHead data, 'CONTENT-TYPE': 'text/plain'
                 res.write "#{data} - #{err.message}"
             else
@@ -30,7 +32,7 @@ exports.start = (callback) ->
                     'CONTENT-TYPE': 'text/xml; charset="utf-8"'
                     'CONTENT-LENGTH': Buffer.byteLength(data)
                     'EXT': ''
-                    'SERVER': httpu.makeServerString @name
+                    'SERVER': httpu.makeServerString.call @
                 res.write data
             res.end()
 
@@ -82,7 +84,7 @@ exports.start = (callback) ->
             return callback err if err
             server.listen (err) ->
                 port = server.address().port
-                console.info "Web server listening on http://#{address}:#{port}"
+                console.info "Web server listening on http://#{address}:#{port}."
                 callback err, { address: address, port: port }
 
     listen (err, serverInfo) ->
