@@ -8,7 +8,9 @@ for deviceType in deviceList
 
 exports.createDevice = (type, name, callback) ->
     unless type in deviceList
-        callback new Error "UPnP device of type #{type} is not yet implemented."
+        err = new Error "UPnP device of type #{type} is not yet implemented."
+        console.error err.message
+        callback err
 
     # Constructor is asynchronous and returns itself.
     new Devices[type] name, (err, device) ->

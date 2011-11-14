@@ -1,10 +1,10 @@
 # XML helpers for SOAP and Device descriptions.
-# Exported and added as Device or Service prototypes.
+# Run with a Device or Service as `@`.
 
 os  = require 'os'
 xml = require 'xml'
 
-protocol   = require './protocol'
+protocol = require './protocol'
 
 # Build device description XML structure. `@` is bound to Device.
 exports.buildDescription = (callback) ->

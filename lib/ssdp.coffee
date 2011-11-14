@@ -1,9 +1,10 @@
 dgram = require 'dgram'
 os    = require 'os'
 
-helpers  = require './helpers'
 httpu    = require './httpu'
 protocol = require './protocol'
+
+(console[c] = ->) for c in ['log','info'] unless /upnp-device/.test process.env.NODE_DEBUG
 
 ssdp = {}
 
@@ -39,7 +40,7 @@ shouldRespond = (searchType, device) ->
 answerAfter = (maxWait, address, port, device) ->
     # specification says to wait between 0 and MX seconds before reply
     wait = Math.floor(Math.random() * (parseInt(maxWait)) * 1000)
-    helpers.debug "Replying to search request from #{address}:#{port} in #{wait}ms"
+    console.info "Replying to search request from #{address}:#{port} in #{wait}ms"
     setTimeout(answer, wait, address, port, device)
 
 notify = (subtype, device) ->
@@ -66,7 +67,7 @@ answer = (address, port, device) ->
 sendMessages = (messages, address = '239.255.255.250', port = 1900) ->
     socket = dgram.createSocket 'udp4'
     socket.bind port
-    helpers.debug "Sending #{messages.length} messages to #{address}:#{port}"
+    console.info "Sending #{messages.length} messages to #{address}:#{port}"
     done = messages.length
     for msg in messages
         socket.send msg, 0, msg.length, port, address, ->

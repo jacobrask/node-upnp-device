@@ -52,4 +52,6 @@ Development
 
 upnp-device is written in [CoffeeScript](http://coffeescript.org).
 
+`console.log` and `console.info` are muted by default, unmute with `NODE_DEBUG=upnp-device`.
+
 Contributions and comments are welcome on GitHub or IRC (jacobrask@FreeNode).

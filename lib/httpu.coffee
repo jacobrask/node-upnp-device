@@ -4,13 +4,15 @@ http = require 'http'
 os   = require 'os'
 url  = require 'url'
 
-helpers  = require './helpers'
 protocol = require './protocol'
+
+(console[c] = ->) for c in ['log','info'] unless /upnp-device/.test process.env.NODE_DEBUG
 
 httpu = {}
 
 # generate HTTP headers suiting the message type
 httpu.makeMessage = (reqType, customHeaders, device, ssdp) ->
+    console.log "Making #{reqType} message with #{(key + ':' + val) for key, val of customHeaders}"
     # SSDP defaults
     ssdp ?= {}
     ssdp.address = '239.255.255.250'
@@ -39,7 +41,6 @@ httpu.makeMessage = (reqType, customHeaders, device, ssdp) ->
     for header in includeHeaders
         message.push "#{header.toUpperCase()}: #{customHeaders[header] or defaultHeaders[header]}"
 
-    helpers.debug message.join '|'
     # add carriage returns and new lines as required by HTTP spec
     message.push '\r\n'
     new Buffer message.join '\r\n'
