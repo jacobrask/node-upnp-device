@@ -4,6 +4,8 @@
 xml    = require 'xml'
 xml2js = require 'xml2js'
 
+protocol = require '../protocol'
+
 class Service
 
     constructor: (@device) ->
@@ -20,7 +22,7 @@ class Service
         body = {}
         body[action] = [
             _attr:
-                'xmlns:u': @makeServiceType @type
+                'xmlns:u': protocol.makeServiceType.call @
         ]
         for arg in args
             body[action].push arg

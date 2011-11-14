@@ -13,14 +13,12 @@ exports.makeNameSpace = (prefix = 'urn:schemas-upnp-org', version = '1.0') ->
 
 # Make Device/Service type string for SSDP messages
 # and Service/Device descriptions.
-makeType = (category, type, version, schemaPrefix = 'urn:schemas-upnp-org') ->
-    [ schemaPrefix
+makeType = (category) ->
+    [ @schema?.prefix || @device.schema.prefix
       category
-      @type || type
-      @version || version
+      @type
+      @version || @device.version
     ].join ':'
 
 exports.makeDeviceType = -> makeType.call @, 'device'
-
-exports.makeServiceType = (serviceType, version) ->
-    makeType 'service', serviceType, version
+exports.makeServiceType = -> makeType.call @, 'service'

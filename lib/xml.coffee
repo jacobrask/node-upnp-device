@@ -25,16 +25,16 @@ exports.buildDescription = (callback) ->
 
     # Build an array of all `service` elements.
     buildServiceList = =>
-        for serviceType in Object.keys(@services)
-            { service: buildService serviceType }
+        for s of @services
+            { service: buildService.call @services[s] }
 
     # Build an array of elements contained in a `service` element.
-    buildService = (serviceType) =>
-        [ { serviceType: protocol.makeServiceType(serviceType, @version) }
-          { serviceId: 'urn:upnp-org:serviceId:' + serviceType }
-          { SCPDURL: '/service/description/' + serviceType }
-          { controlURL: '/service/control/' + serviceType }
-          { eventSubURL: '/service/event/' + serviceType } ]
+    buildService = ->
+        [ { serviceType: protocol.makeServiceType.call(@) }
+          { serviceId: 'urn:upnp-org:serviceId:' + @type }
+          { SCPDURL: '/service/description/' + @type }
+          { controlURL: '/service/control/' + @type }
+          { eventSubURL: '/service/event/' + @type } ]
 
     desc = '<?xml version="1.0" encoding="utf-8"?>'
     desc += xml [
