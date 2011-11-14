@@ -1,77 +1,88 @@
+# SSDP helpers. If they depend on Device state they will be exported and
+# added as Device prototypes. Messages use HTTP and are generated in the
+# `httpu` module.
+
 dgram = require 'dgram'
 os    = require 'os'
 
 httpu    = require './httpu'
 protocol = require './protocol'
 
-(console[c] = ->) for c in ['log','info'] unless /upnp-device/.test process.env.NODE_DEBUG
+unless /upnp-device/.test process.env.NODE_DEBUG
+    (console[c] = ->) for c in ['log','info']
 
-ssdp = {}
+# `@` should be bound to a Device.
+exports.start = (callback) ->
 
-ssdp.announce = (device, timeout = 1800) ->
-    # to "kill" any instances that haven't timed out on control points yet, first send byebye message
-    notify 'byebye', device
-    notify 'alive', device
+    listen = (port = 1900, address = '239.255.255.250') =>
+        socket = dgram.createSocket 'udp4', (msg, rinfo) =>
+            # Message listener.
+            httpu.parseRequest msg, rinfo, (err, req) =>
+                if req.method is 'M-SEARCH' and shouldRespond(req.searchType)
+                    answerAfter(req.maxWait, req.address, req.port)
+        socket.addMembership(address)
+        socket.bind(port)
+        console.info "UDP socket listening on #{address}:#{port}."
 
-    # recommended delay between advertisements is a random interval of less than half of timeout
-    setInterval(
-        notify
-        Math.floor(Math.random() * ((timeout / 2) * 1000))
-        'alive'
-        device
-    )
+    shouldRespond = (searchType) ->
+        searchType in [
+            'ssdp:all'
+            'upnp:rootdevice'
+             protocol.makeDeviceType.call @
+             @uuid ]
 
-# create socket listening for search requests
-ssdp.listen = (device, port = 1900, address = '239.255.255.250') ->
-    socket = dgram.createSocket 'udp4', (msg, rinfo) =>
-        httpu.parseRequest msg, rinfo, (err, req) =>
-            if req.method is 'M-SEARCH' and shouldRespond(req.searchType, device)
-                answerAfter(req.maxWait, req.address, req.port, device)
-    socket.addMembership(address)
-    socket.bind(port)
+    # Wait between 0 and maxWait seconds before answering to avoid
+    # flooding control points.
+    answerAfter = (maxWait, address, port, device) =>
+        wait = Math.floor(Math.random() * (parseInt(maxWait)) * 1000)
+        console.info "Replying to search request from #{address}:#{port}
+ in #{wait}ms."
+        setTimeout(answer, wait, address, port)
 
-shouldRespond = (searchType, device) ->
-    searchType in [
-        'ssdp:all'
-        'upnp:rootdevice'
-         protocol.makeDeviceType(device.type, device.version)
-         device.uuid ]
+    answer = (address, port) =>
+        sendMessages(
+            httpu.makeMessage(
+                'ok'
+                st: st, ext: null
+                @
+            ) for st in httpu.makeNotificationTypes(@)
+            address
+            port
+        )
 
-answerAfter = (maxWait, address, port, device) ->
-    # specification says to wait between 0 and MX seconds before reply
-    wait = Math.floor(Math.random() * (parseInt(maxWait)) * 1000)
-    console.info "Replying to search request from #{address}:#{port} in #{wait}ms"
-    setTimeout(answer, wait, address, port, device)
+    # Create a UDP socket, send messages, then close socket.
+    sendMessages = (messages, address = '239.255.255.250', port = 1900) ->
+        socket = dgram.createSocket 'udp4'
+        socket.bind port
+        console.info "Sending #{messages.length} messages
+ to #{address}:#{port}."
+        done = messages.length
+        for msg in messages
+            socket.send msg, 0, msg.length, port, address, ->
+                if done-- is 1
+                    socket.close()
 
-notify = (subtype, device) ->
-    sendMessages(
-        httpu.makeMessage(
-            'notify'
-            nt: nt, nts: "ssdp:#{subtype}", host: null
-            device
-        ) for nt in httpu.makeNotificationTypes(device)
-    )
+    announce = (timeout = 1800) =>
+        # To "kill" any instances that haven't timed out on control points yet,
+        # first send byebye message.
+        notify 'byebye'
+        notify 'alive'
 
-answer = (address, port, device) ->
-    sendMessages(
-        httpu.makeMessage(
-            'ok'
-            st: st, ext: null
-            device
-        ) for st in httpu.makeNotificationTypes(device)
-        address
-        port
-    )
+        # Now keep advertising the device. A random interval, but less than
+        # half of SSDP timeout, is recommended.
+        setInterval(
+            notify
+            Math.floor(Math.random() * ((timeout / 2) * 1000))
+            'alive'
+        )
 
-# create a UDP socket, send messages, then close socket
-sendMessages = (messages, address = '239.255.255.250', port = 1900) ->
-    socket = dgram.createSocket 'udp4'
-    socket.bind port
-    console.info "Sending #{messages.length} messages to #{address}:#{port}"
-    done = messages.length
-    for msg in messages
-        socket.send msg, 0, msg.length, port, address, ->
-            if done-- is 1
-                socket.close()
-
-module.exports = ssdp
+    notify = (subtype) =>
+        sendMessages(
+            httpu.makeMessage(
+                'notify'
+                nt: nt, nts: "ssdp:#{subtype}", host: null
+                @
+            ) for nt in httpu.makeNotificationTypes(@)
+        )
+    listen()
+    announce()

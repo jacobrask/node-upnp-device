@@ -28,9 +28,8 @@ class Device
         httpServer.start.call @, (err, serverInfo) =>
             @httpAddress = serverInfo.address
             @httpPort = serverInfo.port
-            ssdp.listen @
-            ssdp.announce @
-            callback null, ':-)'
+            ssdp.start.call @
+            callback null, "#{@type} device started on #{@httpAddress}."
         @
 
     _buildDescription: xml.buildDescription

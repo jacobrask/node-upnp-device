@@ -16,7 +16,7 @@ exports.buildDescription = (callback) ->
 
     # Build `device` element.
     buildDevice = =>
-        [ { deviceType: protocol.makeDeviceType(@type, @version) }
+        [ { deviceType: protocol.makeDeviceType.call @ }
           { friendlyName: "#{@name} @ #{os.hostname()}".substr(0, 64) }
           { manufacturer: 'UPnP Device for Node.js' }
           { modelName: @name.substr(0, 32) }

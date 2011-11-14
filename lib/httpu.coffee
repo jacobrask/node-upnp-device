@@ -49,7 +49,7 @@ httpu.makeMessage = (reqType, customHeaders, device, ssdp) ->
 httpu.makeNotificationTypes = (device) ->
     [ 'upnp:rootdevice'
       device.uuid
-      protocol.makeDeviceType(device.type, device.version)
+      protocol.makeDeviceType.call device
     ].concat(protocol.makeServiceType(s, device.version) for s in Object.keys(device.services))
 
 httpu.parseRequest = (msg, rinfo, callback) ->
