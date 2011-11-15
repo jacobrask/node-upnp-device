@@ -65,7 +65,7 @@ exports.makeNotificationTypes = ->
       @uuid
       protocol.makeDeviceType.call @
     ].concat(
-        protocol.makeServiceType.call(@services[s]) for s of @services
+        protocol.makeServiceType.call(s) for name, s of @services
     )
 
 # UPnP Device info for `SERVER` header.

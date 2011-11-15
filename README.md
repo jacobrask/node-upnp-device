@@ -31,8 +31,6 @@ Node 0.4.12 recommended. upnp-device is ___not___ compatible with Node 0.6.0 due
 ```javascript
 var upnp = require('upnp-device');
 
-// Generate an UPnP device description and announce it via SSDP
-
 upnp.createDevice('MediaServer', 'My Media Application', startDevice);
 
 var startDevice = function(err, device) {
@@ -46,12 +44,20 @@ See also
 --------
 
  * [UPnP client](https://github.com/TooTallNate/node-upnp-client) by TooTallNate
+ * [UPnP.org](http://upnp.org)
 
 Development
 -----------
 
 upnp-device is written in [CoffeeScript](http://coffeescript.org).
 
-`console.log` and `console.info` are muted by default, unmute with `NODE_DEBUG=upnp-device`.
+`console.log` and `console.info` are muted by default, unmute with `NODE_DEBUG=upnp-device`:
+
+```bash
+$ NODE_DEBUG=upnp-device node myapp.js
+# or
+$ export NODE_DEBUG=upnp-device
+$ node myapp.js
+```
 
 Contributions and comments are welcome on GitHub or IRC (jacobrask@FreeNode).
