@@ -22,7 +22,7 @@ exports.start = (callback) ->
         socket.bind(port)
         console.info "UDP socket listening on #{address}:#{port}."
 
-    shouldRespond = (searchType) ->
+    shouldRespond = (searchType) =>
         searchType in [
             'ssdp:all'
             'upnp:rootdevice'
@@ -41,7 +41,7 @@ exports.start = (callback) ->
     # Create a UDP socket, send messages, then close socket.
     sendMessages = (messages, address = '239.255.255.250', port = 1900) ->
         socket = dgram.createSocket 'udp4'
-        socket.bind port
+        socket.bind
         console.info "Sending #{messages.length} messages
  to #{address}:#{port}."
         done = messages.length

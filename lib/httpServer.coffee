@@ -81,6 +81,8 @@ exports.start = (callback) ->
                                 (err, soapResponse) ->
                                     callback err, soapResponse, ext: null
                             )
+                    else
+                        callback new Error('File not found'), 404
             else
                 callback new Error('File not found'), 404
 
