@@ -1,10 +1,10 @@
 # Implements UPnP Device Architecture version 1.0
 # http://upnp.org/sdcps-and-certification/standards/device-architecture-documents/
 
-xml    = require 'xml'
 xml2js = require 'xml2js'
 
 protocol = require '../protocol'
+xml      = require '../xml'
 
 class Service
 
@@ -17,25 +17,6 @@ class Service
             @[action] options, (err, data) ->
                 callback null, data
 
-
-    buildSoapResponse: (action, args) ->
-        body = {}
-        body[action] = [
-            _attr:
-                'xmlns:u': protocol.makeServiceType.call @
-        ]
-        for arg in args
-            body[action].push arg
-
-        res = '<?xml version="1.0"?>'
-        res += xml [
-            's:Envelope': [
-                _attr:
-                    'xmlns:s': 'http://schemas.xmlsoap.org/soap/envelope/'
-                    's:encodingStyle': 'http://schemas.xmlsoap.org/soap/encoding/'
-                { 's:Body': [ body ] }
-            ]
-        ]
-        return res
+    buildSoapResponse: xml.buildSoapResponse
 
 module.exports = Service

@@ -6,7 +6,7 @@ xml = require 'xml'
 
 protocol = require './protocol'
 
-# Build device description XML structure. `@` is bound to Device.
+# Build device description XML document. `@` is bound to a Device.
 exports.buildDescription = (callback) ->
 
     # Build `specVersion` element.
@@ -46,3 +46,33 @@ exports.buildDescription = (callback) ->
             ]
         ]
     callback null, desc
+
+
+# Build a SOAP response XML document. `@` is bound to a Service.
+exports.buildSoapResponse = (action, args, callback) ->
+
+    buildBody = (args) ->
+        body = {}
+        # Create an action element.
+        body['u:' + action + 'Response'] = [
+            _attr:
+                'xmlns:u': protocol.makeServiceType.call @
+        ]
+        # Add action arguments. First turn each key/value pair into separate
+        # objects, to make them separate XML elements.
+        for key, value of args
+            o = {}
+            o[key] = value
+            body['u:' + action].push o
+        body
+
+    resp = '<?xml version="1.0"?>'
+    resp += xml [
+        's:Envelope': [
+            _attr:
+                'xmlns:s': 'http://schemas.xmlsoap.org/soap/envelope/'
+                's:encodingStyle': 'http://schemas.xmlsoap.org/soap/encoding/'
+            { 's:Body': [ buildBody(args) ] }
+        ]
+    ]
+    callback null, resp
