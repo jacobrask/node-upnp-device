@@ -20,4 +20,15 @@ class ConnectionManager extends Service
                 callback null, resp
         )
 
+    GetCurrentConnectionIDs: (options, callback) ->
+        # The optional `PrepareForConnection` action is not implemented,
+        # so this should always return `0`.
+        @buildSoapResponse(
+            'GetProtocolInfo'
+            ConnectionIDs: 0
+            (err, resp) ->
+                callback null, resp
+        )
+
+
 module.exports = ConnectionManager
