@@ -51,10 +51,11 @@ exports.buildDescription = (callback) ->
 # Build a SOAP response XML document. `@` is bound to a Service.
 exports.buildSoapResponse = (action, args, callback) ->
 
-    buildBody = (args) ->
+    buildBody = (args) =>
+        actionKey = "u:#{action}Response"
         body = {}
         # Create an action element.
-        body['u:' + action + 'Response'] = [
+        body[actionKey] = [
             _attr:
                 'xmlns:u': protocol.makeServiceType.call @
         ]
@@ -63,7 +64,7 @@ exports.buildSoapResponse = (action, args, callback) ->
         for key, value of args
             o = {}
             o[key] = value
-            body['u:' + action].push o
+            body[actionKey].push o
         body
 
     resp = '<?xml version="1.0"?>'
