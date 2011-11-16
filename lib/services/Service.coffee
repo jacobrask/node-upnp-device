@@ -1,10 +1,11 @@
 # Implements UPnP Device Architecture version 1.0
 # http://upnp.org/sdcps-and-certification/standards/device-architecture-documents/
 
+makeUuid = require 'node-uuid'
 xml2js = require 'xml2js'
 
+httpu    = require '../httpu'
 protocol = require '../protocol'
-makeUuid = require 'node-uuid'
 xml      = require '../xml'
 
 class Service
@@ -20,7 +21,6 @@ class Service
                 callback null, data
 
     subscribe: (cbUrls, timeout, callback) ->
-
         uuid = "uuid:#{makeUuid()}"
         @subscriptions[uuid] = new Subscription(
             cbUrls
@@ -28,7 +28,6 @@ class Service
             uuid
             @
         )
-        console.log "Current subscriptions:", @subscriptions
         callback null, { sid: uuid, timeout: 'Second-1800' }
 
     renew: (uuid, timeout, callback) ->
@@ -41,16 +40,18 @@ class Service
 
     unsubscribe: (uuid) ->
         delete @subscriptions[uuid]
-        console.log "Current subscriptions:", @subscriptions
 
     buildSoapResponse: xml.buildSoapResponse
 
+
 class Subscription
-    constructor: (urls, timeout, @uuid, @parent) ->
-        eventKey: 0
+    constructor: (urls, timeout, @uuid, @service) ->
+        @eventKey = 0
         @callbackUrls = urls.split(',')
         console.info "Added new subscription #{@uuid} and callback url", @callbackUrls
-        @selfDestruct(timeout)
+        @selfDestruct timeout
+        # Send out event on current state variables.
+        @notify @service.stateVariables
 
     selfDestruct: (timeout) ->
         # Self destruct in `ms` milliseconds.
@@ -58,7 +59,18 @@ class Subscription
         setTimeout(
             =>
                 console.info "Subscription #{@uuid} has timed out, deleting."
-                @parent.unsubscribe(@uuid)
+                @service.unsubscribe @uuid
             ms)
+
+    notify: (vars) ->
+        xml.buildEvent vars, (err, resp) =>
+            httpu.postEvent.call(
+                @service.device
+                @callbackUrls
+                @uuid
+                @eventKey
+                resp
+            )
+        @eventKey++
 
 module.exports = Service

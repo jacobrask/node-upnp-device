@@ -77,3 +77,26 @@ exports.buildSoapResponse = (action, args, callback) ->
         ]
     ]
     callback null, resp
+
+exports.buildEvent = (vars, callback) ->
+
+    buildVars = (vars) =>
+        # Turn each key/value pair into separate objects, to make them
+        # separate XML elements.
+        varArr = []
+        for key, value of vars
+            o = {}
+            o[key] = value
+            varArr.push o
+        console.log varArr
+        varArr
+
+    resp = '<?xml version="1.0"?>'
+    resp += xml [
+        'e:propertyset': [
+            _attr:
+                'xmlns:e': 'urn:schemas-upn-org:event-1-0'
+            { 'e:property': buildVars(vars) }
+        ]
+    ]
+    callback null, resp

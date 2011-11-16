@@ -27,8 +27,6 @@ makeHeaders = exports.makeHeaders = (customHeaders) ->
         server: makeServerString.call @
         usn: @uuid + (if @uuid is (customHeaders.nt or customHeaders.st) then '' else '::' + (customHeaders.nt or customHeaders.st))
 
-    # Always included (add `null` to use `defaultHeaders` value).
-    customHeaders['server'] = null
     headers = {}
     for header of customHeaders
         headers[header.toUpperCase()] = customHeaders[header] or defaultHeaders[header.toLowerCase()]
@@ -75,6 +73,31 @@ makeServerString = ->
       "#{@name}/1.0"
     ].join ' '
 
+exports.postEvent = (urls, uuid, eventKey, data) ->
+    for u in urls
+        u = url.parse(u)
+        h =
+            nt: 'upnp:event'
+            nts: 'upnp:propchange'
+            sid: uuid
+            seq: eventKey.toString()
+            'content-length': Buffer.byteLength(data)
+            'content-type': null
+        options =
+            host: u.hostname
+            port: u.port
+            method: 'NOTIFY'
+            path: u.pathname
+            headers: makeHeaders(h)
+        req = http.request options, (res) ->
+            res.on 'data', (chunk) ->
+                console.log('BODY: ' + chunk)
+        req.on 'error', (err) ->
+            console.log "Problem with request: #{err.message}"
+
+        console.log data
+        req.write(data)
+        req.end()
 
 exports.parseRequest = (msg, rinfo, callback) ->
     parseHeaders msg, (err, req) ->

@@ -11,6 +11,10 @@ class ConnectionManager extends Service
         @protocols =
             for mimeType in @device.accepts
                 "http-get:*:#{mimeType}:*"
+        @stateVariables =
+            'SourceProtocolInfo': @protocols.join(',')
+            'SinkProtocolInfo': ''
+            'CurrentConnectionIDs': 0
 
     GetProtocolInfo: (options, callback) ->
         @buildSoapResponse(
@@ -45,5 +49,5 @@ class ConnectionManager extends Service
             (err, resp) ->
                 callback null, resp
         )
-
+    
 module.exports = ConnectionManager

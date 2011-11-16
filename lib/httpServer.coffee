@@ -28,7 +28,8 @@ exports.start = (callback) ->
             else
                 # Make a header object for response.
                 # `null` means use default value.
-                headers = {}
+                headers =
+                    server: null
                 if data?
                     headers['Content-Type'] = null
                     headers['Content-Length'] = Buffer.byteLength(data)
