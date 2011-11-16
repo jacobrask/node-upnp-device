@@ -4,7 +4,7 @@
 xml2js = require 'xml2js'
 
 protocol = require '../protocol'
-uuid     = require 'node-uuid'
+makeUuid = require 'node-uuid'
 xml      = require '../xml'
 
 class Service
@@ -19,16 +19,46 @@ class Service
             @[action] options, (err, data) ->
                 callback null, data
 
-    event: (type, cbUrl, timeout, callback) ->
-        if type is 'subscribe'
-            subUuid = "uuid:#{uuid()}"
-            @subscriptions[subUuid] = {
-                eventKey: 0
-                callback: cbUrl
-            }
-            console.info "Added new subscription with #{subUuid} and callback url #{cbUrl}"
-            callback null, { sid: subUuid, timeout: 'Second-1800' }
+    subscribe: (cbUrls, timeout, callback) ->
+
+        uuid = "uuid:#{makeUuid()}"
+        @subscriptions[uuid] = new Subscription(
+            cbUrls
+            timeout
+            uuid
+            @
+        )
+        console.log "Current subscriptions:", @subscriptions
+        callback null, { sid: uuid, timeout: 'Second-1800' }
+
+    renew: (uuid, timeout, callback) ->
+        unless @subscriptions[uuid]?
+            console.info "Got subscription renewal request but could not find
+ device #{sid}."
+            return callback new HttpError 412
+        console.info "Renewed subscription #{uuid}"
+        @subscriptions[uuid].selfDestruct(timeout)
+
+    unsubscribe: (uuid) ->
+        delete @subscriptions[uuid]
+        console.log "Current subscriptions:", @subscriptions
 
     buildSoapResponse: xml.buildSoapResponse
+
+class Subscription
+    constructor: (urls, timeout, @uuid, @parent) ->
+        eventKey: 0
+        @callbackUrls = urls.split(',')
+        console.info "Added new subscription #{@uuid} and callback url", @callbackUrls
+        @selfDestruct(timeout)
+
+    selfDestruct: (timeout) ->
+        # Self destruct in `ms` milliseconds.
+        ms = parseInt(/Second-(\d+)/.exec(timeout)[1]) * 1000
+        setTimeout(
+            =>
+                console.info "Subscription #{@uuid} has timed out, deleting."
+                @parent.unsubscribe(@uuid)
+            ms)
 
 module.exports = Service

@@ -104,3 +104,9 @@ makeDescriptionUrl = (address, port)->
         port: port
         pathname: '/device/description'
     )
+
+# Use http module's `STATUS_CODES` static to get error messages.
+class HttpError extends Error
+    constructor: (@code) ->
+        @message = http.STATUS_CODES[@code]
+exports.HttpError = HttpError

@@ -8,6 +8,7 @@ url  = require 'url'
 helpers = require './helpers'
 httpu   = require './httpu'
 xml     = require './xml'
+{HttpError} = httpu
 
 unless /upnp-device/.test process.env.NODE_DEBUG
     (console[c] = ->) for c in ['log', 'info']
@@ -27,10 +28,10 @@ exports.start = (callback) ->
             else
                 # Make a header object for response.
                 # `null` means use default value.
-                headers = {
-                    'Content-Type': null
-                }
-                headers['Content-Length'] = Buffer.byteLength(data) if data?
+                headers = {}
+                if data?
+                    headers['Content-Type'] = null
+                    headers['Content-Length'] = Buffer.byteLength(data)
                 for header, value of customHeaders
                     headers[header] = value
                 res.writeHead 200, httpu.makeHeaders.call(@, headers)
@@ -82,29 +83,41 @@ exports.start = (callback) ->
                     when 'event'
                         console.info "#{req.method} on #{serviceType} sent
  by #{req.client.remoteAddress}."
+                        {sid, nt, timeout} = req.headers
+                        cbUrls = req.headers.callback
+                        console.log sid, nt, timeout, cbUrls
                         switch req.method
                             when 'SUBSCRIBE'
                                 # See Device specification for details on errors.
-                                if req.headers.sid and (req.headers.nt or req.headers.callback)
+                                if nt? and cbUrls?
+                                    unless /<http/.test cbUrls
+                                        return callback new HttpError 412
+                                    @services[serviceType].subscribe(
+                                        cbUrls.slice(1, -1)
+                                        timeout
+                                        (err, respHeaders) ->
+                                            callback err, null, respHeaders
+                                    )
+                                else if sid? and not (nt? or cbUrls?)
+                                    @services[serviceType].renew sid, timeout, ->
+                                        (err, respHeaders) ->
+                                            callback err, null, respHeaders
+                                else
                                     return callback new HttpError 400
-                                unless /<http/.test req.headers.callback
+                            when 'UNSUBSCRIBE'
+                                unless sid?
                                     return callback new HttpError 412
-                                @services[serviceType].event(
-                                    req.method.toLowerCase()
-                                    req.headers.callback.slice(1, -1)
-                                    req.headers.timeout
-                                    (err, respHeaders) ->
-                                        callback err, null, respHeaders
-                                )
+                                if nt? or cbUrls?
+                                    return callback new HttpError 400
+                                @services[serviceType].unsubscribe sid
+                                # Response is simply "200 OK".
+                                callback()
+
                     else
                         callback new HttpError 404
             else
                 callback new HttpError 404
 
-    # Use http module's `STATUS_CODES` static to get error messages.
-    class HttpError extends Error
-        constructor: (@code) ->
-            @message = http.STATUS_CODES[@code]
 
     # Get internal IP and pass IP/port to callback. Needed for SSDP messages.
     listen = (callback) ->
