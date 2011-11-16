@@ -42,6 +42,7 @@ class Service
         delete @subscriptions[uuid]
 
     buildSoapResponse: xml.buildSoapResponse
+    buildEvent: xml.buildEvent
 
 
 class Subscription
@@ -63,7 +64,7 @@ class Subscription
             ms)
 
     notify: (vars) ->
-        xml.buildEvent vars, (err, resp) =>
+        @service.buildEvent vars, (err, resp) =>
             httpu.postEvent.call(
                 @service.device
                 @callbackUrls
