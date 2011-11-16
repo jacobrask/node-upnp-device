@@ -18,8 +18,9 @@ exports.start = (callback) ->
             httpu.parseRequest msg, rinfo, (err, req) =>
                 if req.method is 'M-SEARCH' and shouldRespond(req.searchType)
                     answerAfter(req.maxWait, req.address, req.port)
-        socket.addMembership(address)
-        socket.bind(port)
+        socket.setMulticastTTL 4
+        socket.addMembership address
+        socket.bind port
         console.info "UDP socket listening on #{address}:#{port}."
 
     shouldRespond = (searchType) =>
@@ -41,7 +42,9 @@ exports.start = (callback) ->
     # Create a UDP socket, send messages, then close socket.
     sendMessages = (messages, address = '239.255.255.250', port = 1900) ->
         socket = dgram.createSocket 'udp4'
-        socket.bind
+        # Messages with specified destination do not need TTL limit.
+        socket.setTTL 4 unless address?
+        socket.bind()
         console.info "Sending #{messages.length} messages
  to #{address}:#{port}."
         done = messages.length
