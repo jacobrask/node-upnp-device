@@ -21,11 +21,9 @@ exports.start = (callback) ->
  at #{req.client.remoteAddress}."
         handler req, (err, data, customHeaders) =>
             if err?
-                # On error, `data` is an error code. Very rudimentary error
-                # handling, as it is not intended for humans anyway.
-                console.warn "Responded with #{data}: #{err.message} for #{req.url}."
-                res.writeHead data, 'Content-Type': 'text/plain'
-                res.write "#{data} - #{err.message}"
+                console.warn "Responded with #{err.code}: #{err.message} for #{req.url}."
+                res.writeHead err.code, 'Content-Type': 'text/plain'
+                res.write "#{err.code} - #{err.message}"
             else
                 # Make a header object for response.
                 # `null` means use default value.
@@ -45,9 +43,9 @@ exports.start = (callback) ->
         switch category
             when 'device'
                 if action isnt 'description'
-                    return callback new Error('Not Found'), 404
+                    return callback new HttpError 404
                 @_buildDescription (err, desc) ->
-                    return callback err, 500 if err
+                    return callback new HttpError 500 if err
                     callback null, desc
 
             when 'service'
@@ -58,12 +56,12 @@ exports.start = (callback) ->
                             __dirname + '/services/' + serviceType + '.xml'
                             'utf8'
                             (err, file) ->
-                                return callback err, 500 if err
+                                return callback new HttpError 500 if err
                                 callback null, file
                         )
                     when 'control'
                         if req.method isnt 'POST' or not req.headers.soapaction?
-                            return callback new Error('Method Not Allowed'), 405
+                            return callback new HttpError 405
                         data = ''
                         req.on 'data', (chunk) ->
                             data += chunk
@@ -86,10 +84,11 @@ exports.start = (callback) ->
  by #{req.client.remoteAddress}."
                         switch req.method
                             when 'SUBSCRIBE'
-                                # Make sure the callback header exists and at
-                                # least resembles an URL.
+                                # See Device specification for details on errors.
+                                if req.headers.sid and (req.headers.nt or req.headers.callback)
+                                    return callback new HttpError 400
                                 unless /<http/.test req.headers.callback
-                                    return callback new Error('Precondition Failed'), 412
+                                    return callback new HttpError 412
                                 @services[serviceType].event(
                                     req.method.toLowerCase()
                                     req.headers.callback.slice(1, -1)
@@ -98,9 +97,14 @@ exports.start = (callback) ->
                                         callback err, null, respHeaders
                                 )
                     else
-                        callback new Error('File Not Found'), 404
+                        callback new HttpError 404
             else
-                callback new Error('File Not Found'), 404
+                callback new HttpError 404
+
+    # Use http module's `STATUS_CODES` static to get error messages.
+    class HttpError extends Error
+        constructor: (@code) ->
+            @message = http.STATUS_CODES[@code]
 
     # Get internal IP and pass IP/port to callback. Needed for SSDP messages.
     listen = (callback) ->
