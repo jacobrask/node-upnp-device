@@ -88,7 +88,6 @@ exports.buildEvent = (vars, callback) ->
             o = {}
             o[key] = value
             varArr.push o
-        console.log varArr
         varArr
 
     resp = '<?xml version="1.0"?>'

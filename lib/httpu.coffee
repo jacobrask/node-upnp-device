@@ -95,7 +95,6 @@ exports.postEvent = (urls, uuid, eventKey, data) ->
         req.on 'error', (err) ->
             console.log "Problem with request: #{err.message}"
 
-        console.log data
         req.write(data)
         req.end()
 
