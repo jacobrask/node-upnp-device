@@ -4,6 +4,7 @@
 os  = require 'os'
 xml = require 'xml'
 
+helpers = require './helpers'
 protocol = require './protocol'
 
 # Build device description XML document. `@` is bound to a Device.
@@ -51,21 +52,15 @@ exports.buildDescription = (callback) ->
 # Build a SOAP response XML document. `@` is bound to a Service.
 exports.buildSoapResponse = (action, args, callback) ->
 
-    buildBody = (args) =>
-        actionKey = "u:#{action}Response"
-        body = {}
-        # Create an action element.
-        body[actionKey] = [
-            _attr:
-                'xmlns:u': protocol.makeServiceType.call @
-        ]
-        # Add action arguments. First turn each key/value pair into separate
-        # objects, to make them separate XML elements.
-        for key, value of args
-            o = {}
-            o[key] = value
-            body[actionKey].push o
-        body
+    body = {}
+    actionKey = "u:#{action}Response"
+    # Create an action element.
+    body[actionKey] = [
+        _attr: { 'xmlns:u': protocol.makeServiceType.call @ }
+    ]
+    # Add action arguments. First turn each key/value pair into separate
+    # objects, to make them separate XML elements.
+    body[actionKey] = helpers.objToArr(args, body[actionKey])
 
     resp = '<?xml version="1.0"?>'
     resp += xml [
@@ -73,29 +68,19 @@ exports.buildSoapResponse = (action, args, callback) ->
             _attr:
                 'xmlns:s': 'http://schemas.xmlsoap.org/soap/envelope/'
                 's:encodingStyle': 'http://schemas.xmlsoap.org/soap/encoding/'
-            { 's:Body': [ buildBody(args) ] }
+            { 's:Body': [ body ] }
         ]
     ]
     callback null, resp
 
 exports.buildEvent = (vars, callback) ->
 
-    buildVars = (vars) =>
-        # Turn each key/value pair into separate objects, to make them
-        # separate XML elements.
-        varArr = []
-        for key, value of vars
-            o = {}
-            o[key] = value
-            varArr.push o
-        varArr
-
     resp = '<?xml version="1.0"?>'
     resp += xml [
         'e:propertyset': [
             _attr:
                 'xmlns:e': 'urn:schemas-upn-org:event-1-0'
-            { 'e:property': buildVars(vars) }
+            { 'e:property': helpers.objToArr(vars) }
         ]
     ]
     callback null, resp

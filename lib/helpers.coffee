@@ -47,3 +47,13 @@ exports.getUuid = (callback) ->
             # We don't care if the save has finished/succeeded before callback.
             fs.writeFile uuidFile, JSON.stringify(data)
             callback null, uuid
+
+# Turn each key/value pair into separate objects. Mostly used for XML element
+# creation. Optionally takes an array to push elements to.
+exports.objToArr = (obj, arr) ->
+    arr ?= []
+    Object.keys(obj).map (key) ->
+        o = {}
+        o[key] = obj[key]
+        arr.push o
+    return arr
