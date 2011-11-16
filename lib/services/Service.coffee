@@ -42,6 +42,7 @@ class Service
         delete @subscriptions[uuid]
 
     buildSoapResponse: xml.buildSoapResponse
+    buildSoapError: xml.buildSoapError
     buildEvent: xml.buildEvent
 
 

@@ -70,6 +70,33 @@ exports.buildSoapResponse = (action, args, callback) ->
     ]
     callback null, resp
 
+# Build a SOAP error XML document. `@` is bound to a Service.
+exports.buildSoapError = (error, callback) ->
+
+    resp = '<?xml version="1.0" encoding="utf-8"?>'
+    resp += xml [
+        's:Envelope': [
+            _attr:
+                'xmlns:s': 'http://schemas.xmlsoap.org/soap/envelope/'
+                's:encodingStyle': 'http://schemas.xmlsoap.org/soap/encoding/'
+            { 's:Body': [
+                's:Fault': [
+                    { faultcode: 's:Client' }
+                    { faultstring: 'UPnPError' }
+                    { detail: [
+                        'UPnPError': [
+                            _attr: { 'xmlns:e': protocol.makeNameSpace.call(@, 'control') }
+                            { errorCode: error.code }
+                            { errorDescription: error.description }
+                        ]
+                    ] }
+                ]
+            ] }
+        ]
+    ]
+    callback null, resp
+
+
 # Build an event notification XML document.
 exports.buildEvent = (vars, callback) ->
     resp = '<?xml version="1.0" encoding="utf-8"?>'

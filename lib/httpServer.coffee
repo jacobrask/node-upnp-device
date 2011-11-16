@@ -53,7 +53,8 @@ exports.start = (callback) ->
         [category, action, serviceType] = req.url.split('/')[1..]
 
         serviceControlHandler = =>
-            # Service control messages are `POST` requests.
+            # Service control messages are `POST` requests. Possibly implement
+            # support for `M-POST` as well.
             if req.method isnt 'POST' or not req.headers.soapaction?
                 return callback new HttpError 405
 
