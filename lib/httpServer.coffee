@@ -30,13 +30,13 @@ exports.start = (callback) ->
                 # Make a header object for response.
                 # `null` means use default value.
                 headers = {
-                    'Content-Length': Buffer.byteLength(data)
                     'Content-Type': null
                 }
+                headers['Content-Length'] = Buffer.byteLength(data) if data?
                 for header, value of customHeaders
                     headers[header] = value
                 res.writeHead 200, httpu.makeHeaders.call(@, headers)
-                res.write data
+                res.write data if data?
             res.end()
 
     handler = (req, callback) =>
@@ -81,10 +81,26 @@ exports.start = (callback) ->
                                 (err, soapResponse) ->
                                     callback err, soapResponse, ext: null
                             )
+                    when 'event'
+                        console.info "#{req.method} on #{serviceType} sent
+ by #{req.client.remoteAddress}."
+                        switch req.method
+                            when 'SUBSCRIBE'
+                                # Make sure the callback header exists and at
+                                # least resembles an URL.
+                                unless /<http/.test req.headers.callback
+                                    return callback new Error('Precondition Failed'), 412
+                                @services[serviceType].event(
+                                    req.method.toLowerCase()
+                                    req.headers.callback.slice(1, -1)
+                                    req.headers.timeout
+                                    (err, respHeaders) ->
+                                        callback err, null, respHeaders
+                                )
                     else
-                        callback new Error('File not found'), 404
+                        callback new Error('File Not Found'), 404
             else
-                callback new Error('File not found'), 404
+                callback new Error('File Not Found'), 404
 
     # Get internal IP and pass IP/port to callback. Needed for SSDP messages.
     listen = (callback) ->
