@@ -49,5 +49,8 @@ class ConnectionManager extends Service
             (err, resp) ->
                 callback null, resp
         )
+
+    PrepareForConnection: @optionalAction
+    ConnectionComplete: @optionalAction
     
 module.exports = ConnectionManager

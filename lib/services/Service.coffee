@@ -41,6 +41,13 @@ class Service
     unsubscribe: (uuid) ->
         delete @subscriptions[uuid]
 
+    optionalAction: (options, callback) ->
+        @buildSoapError(
+            { code: 602, description: "Optional Action Not Implemented" }
+            (err, resp) ->
+                callback null, resp
+        )
+
     buildSoapResponse: xml.buildSoapResponse
     buildSoapError: xml.buildSoapError
     buildEvent: xml.buildEvent
