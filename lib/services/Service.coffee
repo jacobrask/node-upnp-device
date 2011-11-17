@@ -7,6 +7,10 @@ xml2js = require 'xml2js'
 httpu    = require '../httpu'
 protocol = require '../protocol'
 xml      = require '../xml'
+{HttpError} = httpu
+
+unless /upnp-device/.test process.env.NODE_DEBUG
+    (console[c] = ->) for c in ['log', 'info']
 
 class Service
 
@@ -14,36 +18,41 @@ class Service
         @xmlParser = new xml2js.Parser()
         @subscriptions = {}
 
+
+    # Control action. Most actions build a SOAP response and calls back.
     action: (action, data, callback) ->
         @xmlParser.parseString data, (err, data) =>
             options = data['s:Body']["u:#{action}"]
             @[action] options, (err, data) ->
-                callback null, data
+                callback err, data
 
-    subscribe: (cbUrls, timeout, callback) ->
+
+    # Event subscriptions.
+    subscribe: (cbUrls, reqTimeout, callback) ->
         uuid = "uuid:#{makeUuid()}"
         @subscriptions[uuid] = new Subscription(
-            cbUrls
-            timeout
             uuid
+            cbUrls
             @
         )
-        callback null, { sid: uuid, timeout: 'Second-1800' }
+        realTimeout = @subscriptions[uuid].selfDestruct reqTimeout
+        callback null, sid: uuid, timeout: "Second-#{realTimeout}"
 
-    renew: (uuid, timeout, callback) ->
+    renew: (uuid, reqTimeout, callback) ->
         unless @subscriptions[uuid]?
-            console.info "Got subscription renewal request but could not find
- device #{sid}."
+            console.info "Got subscription renewal request but could not find device #{sid}."
             return callback new HttpError 412
-        console.info "Renewed subscription #{uuid}"
-        @subscriptions[uuid].selfDestruct(timeout)
+        console.info "Renewing subscription #{uuid}."
+        realTimeout = @subscriptions[uuid].selfDestruct reqTimeout
+        callback null, sid: uuid, timeout: "Second-#{realTimeout}"
 
     unsubscribe: (uuid) ->
+        console.info "Deleting subscription #{uuid}."
         delete @subscriptions[uuid]
 
     optionalAction: (options, callback) ->
         @buildSoapError(
-            { code: 602, description: "Optional Action Not Implemented" }
+            code: 602, description: "Optional Action Not Implemented"
             (err, resp) ->
                 callback null, resp
         )
@@ -54,24 +63,29 @@ class Service
 
 
 class Subscription
-    constructor: (urls, timeout, @uuid, @service) ->
+    constructor: (@uuid, urls, @service) ->
         @eventKey = 0
+        @minTimeout = 1800
         @callbackUrls = urls.split(',')
-        console.info "Added new subscription #{@uuid} and callback url", @callbackUrls
-        @selfDestruct timeout
-        # Send out event on current state variables.
+        console.info "Added new subscription #{@uuid} with callbacks", @callbackUrls
         @notify @service.stateVariables
 
     selfDestruct: (timeout) ->
-        # Self destruct in `ms` milliseconds.
-        ms = parseInt(/Second-(\d+)/.exec(timeout)[1]) * 1000
+        # `timeout` is like `Second-(seconds|infinite)`.
+        time = /Second-(infinite|\d+)/.exec(timeout)[1]
+        if time is 'infinite' or parseInt(time) > @minTimeout
+            time = @minTimeout
+        else
+            time = parseInt(time)
+        console.log "Subscription expiring in #{time}s."
         setTimeout(
-            =>
-                console.info "Subscription #{@uuid} has timed out, deleting."
-                @service.unsubscribe @uuid
-            ms)
+            => @service.unsubscribe(@uuid)
+            time * 1000)
+        # Return actual time until unsubscription.
+        time
 
     notify: (vars) ->
+        console.info "Sending out event for current state variables to", @callbackUrls
         @service.buildEvent vars, (err, resp) =>
             httpu.postEvent.call(
                 @service.device
