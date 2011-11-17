@@ -50,11 +50,23 @@ class Service
         console.info "Deleting subscription #{uuid}."
         delete @subscriptions[uuid]
 
+    # For optional actions not (yet) implemented.
     optionalAction: (options, callback) ->
         @buildSoapError(
             code: 602, description: "Optional Action Not Implemented"
             (err, resp) ->
-                callback null, resp
+                callback err, resp
+        )
+
+    # Several Service actions only serve to return a State Variable.
+    getStateVar: (varName, elName, callback) ->
+        o = {}
+        o[elName] = @stateVars[varName]
+        @buildSoapResponse(
+            "Get#{varName}"
+            o
+            (err, resp) ->
+                callback err, resp
         )
 
     buildSoapResponse: xml.buildSoapResponse
@@ -68,7 +80,7 @@ class Subscription
         @minTimeout = 1800
         @callbackUrls = urls.split(',')
         console.info "Added new subscription #{@uuid} with callbacks", @callbackUrls
-        @notify @service.stateVariables
+        @notify @service.stateVars
 
     selfDestruct: (timeout) ->
         # `timeout` is like `Second-(seconds|infinite)`.
@@ -85,6 +97,8 @@ class Subscription
         time
 
     notify: (vars) ->
+        # Specification states that all variables are sent out to all clients
+        # even if only one variable changed.
         console.info "Sending out event for current state variables to", @callbackUrls
         @service.buildEvent vars, (err, resp) =>
             httpu.postEvent.call(

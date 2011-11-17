@@ -11,7 +11,7 @@ class ConnectionManager extends Service
         @protocols =
             for mimeType in @device.accepts
                 "http-get:*:#{mimeType}:*"
-        @stateVariables =
+        @stateVars =
             'SourceProtocolInfo': @protocols.join(',')
             'SinkProtocolInfo': ''
             'CurrentConnectionIDs': 0
@@ -21,18 +21,12 @@ class ConnectionManager extends Service
             'GetProtocolInfo'
             Source: @protocols.join(','), Sink: ''
             (err, resp) ->
-                callback null, resp
+                callback err, resp
         )
 
     GetCurrentConnectionIDs: (options, callback) ->
-        # The optional `PrepareForConnection` action is not implemented,
-        # so this should always return `0`.
-        @buildSoapResponse(
-            'GetCurrentConnectionIDs'
-            ConnectionIDs: 0
-            (err, resp) ->
-                callback null, resp
-        )
+        @getStateVar 'CurrentConnectionIDs', 'ConnectionIDs', (err, resp) ->
+            callback err, resp
 
     GetCurrentConnectionInfo: (options, callback) ->
         # `PrepareForConnection` is not implemented, so only `ConnectionID`
@@ -47,7 +41,7 @@ class ConnectionManager extends Service
             Direction: 'Output'
             Status: 'OK'
             (err, resp) ->
-                callback null, resp
+                callback err, resp
         )
 
     PrepareForConnection: @optionalAction
