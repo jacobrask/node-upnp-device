@@ -12,16 +12,16 @@ unless /upnp-device/.test process.env.NODE_DEBUG
 # `@` should be bound to a Device.
 exports.start = (callback) ->
 
-    listen = (port = 1900, address = '239.255.255.250') =>
+    listen = =>
         socket = dgram.createSocket 'udp4', (msg, rinfo) =>
             # Message listener.
             httpu.parseRequest msg, rinfo, (err, req) =>
                 if req.method is 'M-SEARCH' and shouldRespond(req.searchType)
                     answerAfter(req.maxWait, req.address, req.port)
         socket.setMulticastTTL 4
-        socket.addMembership address
-        socket.bind port
-        console.info "UDP socket listening on #{address}:#{port}."
+        socket.addMembership '239.255.255.250'
+        socket.bind 1900
+        console.info "UDP socket listening for searches."
 
     shouldRespond = (searchType) =>
         searchType in [
