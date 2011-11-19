@@ -3,33 +3,39 @@
 
 Service = require './Service'
 
-class ContentDirectroy extends Service
+class ContentDirectory extends Service
 
     constructor: (@device, type) ->
         super device, type
         @type = 'ContentDirectory'
-        @stateVariables =
-            'SystemUpdateID': 0
-            'ContainerUpdateIDs': ''
+        @contentTypes = []
+        @stateVars =
+            SystemUpdateID:
+                value: 0
+                evented: true
+            ContainerUpdateIDs:
+                value: ''
+                evented: true
+            SearchCapabilities:
+                value: ''
+                evented: false
+            SortCapabilities:
+                value: '*'
+                evented: false
+
+    addContentType: (type) ->
+        unless type in @contentTypes
+            @contentTypes.push type
+            @emit 'newContentType'
 
     GetSearchCapabilities: (options, callback) ->
-        @buildSoapResponse(
-            'GetSearchCapabilities'
-            SearchCaps: ''
-            (err, resp) ->
-                callback err, resp
-        )
+        @getStateVar 'SearchCapabilities', 'SearchCaps', callback
 
     GetSortCapabilities: (options, callback) ->
-        @buildSoapResponse(
-            'GetSortCapabilities'
-            SortCaps: '*'
-            (err, resp) ->
-                callback err, resp
-        )
+        @getStateVar 'SortCapabilities', 'SortCaps', callback
 
     GetSystemUpdateID: (options, callback) ->
-        @getStateVar 'SystemUpdateID', 'Id', (err, resp) -> callback err, resp
+        @getStateVar 'SystemUpdateID', 'Id', callback
 
     Search: @optionalAction
     CreateObject: @optionalAction
@@ -39,5 +45,5 @@ class ContentDirectroy extends Service
     ExportResource: @optionalAction
     StopTransferResource: @optionalAction
     GetTransferProgress: @optionalAction
-    
-module.exports = ConnectionManager
+
+module.exports = ContentDirectory

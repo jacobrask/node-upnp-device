@@ -1,6 +1,7 @@
 # Implements UPnP Device Architecture version 1.0
 # http://upnp.org/sdcps-and-certification/standards/device-architecture-documents/
 
+{EventEmitter} = require 'events'
 makeUuid = require 'node-uuid'
 xml2js = require 'xml2js'
 
@@ -12,7 +13,7 @@ xml      = require '../xml'
 unless /upnp-device/.test process.env.NODE_DEBUG
     (console[c] = ->) for c in ['log', 'info']
 
-class Service
+class Service extends EventEmitter
 
     constructor: (@device) ->
         @xmlParser = new xml2js.Parser()
@@ -54,20 +55,23 @@ class Service
     optionalAction: (options, callback) ->
         @buildSoapError(
             code: 602, description: "Optional Action Not Implemented"
-            (err, resp) ->
-                callback err, resp
+            callback
         )
 
     # Several Service actions only serve to return a State Variable.
     getStateVar: (varName, elName, callback) ->
         o = {}
-        o[elName] = @stateVars[varName]
+        o[elName] = @stateVars[varName].value
         @buildSoapResponse(
             "Get#{varName}"
             o
-            (err, resp) ->
-                callback err, resp
+            callback
         )
+
+    # Notify all subscribers of updated state variables.
+    notify: ->
+        for uuid, sub of @subscriptions
+            @subscriptions[uuid].notify()
 
     buildSoapResponse: xml.buildSoapResponse
     buildSoapError: xml.buildSoapError
@@ -79,8 +83,9 @@ class Subscription
         @eventKey = 0
         @minTimeout = 1800
         @callbackUrls = urls.split(',')
-        console.info "Added new subscription #{@uuid} with callbacks", @callbackUrls
-        @notify @service.stateVars
+        console.info "Added new subscription for #{@service.type} with #{@uuid}."
+        
+        @notify()
 
     selfDestruct: (timeout) ->
         # `timeout` is like `Second-(seconds|infinite)`.
@@ -89,18 +94,21 @@ class Subscription
             time = @minTimeout
         else
             time = parseInt(time)
-        console.log "Subscription expiring in #{time}s."
+        console.log "Subscription #{@uuid} expiring in #{time}s."
         setTimeout(
             => @service.unsubscribe(@uuid)
             time * 1000)
         # Return actual time until unsubscription.
         time
 
-    notify: (vars) ->
+    notify: ->
         # Specification states that all variables are sent out to all clients
         # even if only one variable changed.
         console.info "Sending out event for current state variables to", @callbackUrls
-        @service.buildEvent vars, (err, resp) =>
+        eventedVars = {}
+        for key, val of @service.stateVars
+            eventedVars[key] = val.value if val.evented
+        @service.buildEvent eventedVars, (err, resp) =>
             httpu.postEvent.call(
                 @service.device
                 @callbackUrls

@@ -8,25 +8,32 @@ class ConnectionManager extends Service
     constructor: (@device, type) ->
         super device, type
         @type = 'ConnectionManager'
-        @protocols =
-            for mimeType in @device.accepts
-                "http-get:*:#{mimeType}:*"
         @stateVars =
-            'SourceProtocolInfo': @protocols.join(',')
-            'SinkProtocolInfo': ''
-            'CurrentConnectionIDs': 0
+            SourceProtocolInfo:
+                value: ''
+                evented: true
+            SinkProtocolInfo:
+                value: ''
+                evented: true
+            CurrentConnectionIDs:
+                value: 0
+                evented: true
+
+        @device.services.ContentDirectory.on 'newContentType', =>
+            # Update protocol info and notify subscribers.
+            @stateVars.SourceProtocolInfo.value = @getProtocols()
+            @notify()
+
+    # Build Protocol Info string, `protocol:network:contenttype:additional`.
+    getProtocols: ->
+        ("http-get:*:#{type}:*" for type in @device.services.ContentDirectory.contentTypes).join(',')
 
     GetProtocolInfo: (options, callback) ->
         @buildSoapResponse(
             'GetProtocolInfo'
-            Source: @protocols.join(','), Sink: ''
-            (err, resp) ->
-                callback err, resp
+            Source: @stateVars.SourceProtocolInfo.value, Sink: ''
+            callback
         )
-
-    GetCurrentConnectionIDs: (options, callback) ->
-        @getStateVar 'CurrentConnectionIDs', 'ConnectionIDs', (err, resp) ->
-            callback err, resp
 
     GetCurrentConnectionInfo: (options, callback) ->
         # `PrepareForConnection` is not implemented, so only `ConnectionID`
@@ -40,9 +47,11 @@ class ConnectionManager extends Service
             PeerConnectionID: -1
             Direction: 'Output'
             Status: 'OK'
-            (err, resp) ->
-                callback err, resp
+            callback
         )
+
+    GetCurrentConnectionIDs: (options, callback) ->
+        @getStateVar 'CurrentConnectionIDs', 'ConnectionIDs', callback
 
     PrepareForConnection: @optionalAction
     ConnectionComplete: @optionalAction
