@@ -1,3 +1,6 @@
+unless /upnp-device/.test process.env.NODE_DEBUG
+    (console[c] = ->) for c in ['log','info']
+
 # Currently implemented devices.
 deviceList = [ 'MediaServer' ]
 
@@ -13,5 +16,4 @@ exports.createDevice = (type, name, callback) ->
         return callback err
 
     # Constructor is asynchronous and returns itself.
-    new Devices[type] name, (err, device) ->
-        callback err, device
+    new Devices[type] name, callback

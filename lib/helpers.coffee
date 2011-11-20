@@ -3,10 +3,11 @@ fs     = require 'fs'
 uuid   = require 'node-uuid'
 {exec} = require 'child_process'
 
-(console[c] = ->) for c in ['log','info'] unless /upnp-device/.test process.env.NODE_DEBUG
+unless /upnp-device/.test process.env.NODE_DEBUG
+    (console[c] = ->) for c in ['log','info']
 
 # We need to get the server's internal network IP to send out in SSDP messages.
-# Only works in Linux and (probably) Mac.
+# Only works on Linux and (probably) Mac.
 exports.getNetworkIP = (callback) ->
     exec 'ifconfig', (err, stdout, sterr) ->
         if process.platform is 'darwin'

@@ -8,27 +8,32 @@ Device = require('./Device')
 
 class MediaServer extends Device
 
-    constructor: (name, schema) ->
+    constructor: (name, callback) ->
+        super
         @type = 'MediaServer'
         @version = 1
-
-        @services = { }
-        @services.ContentDirectory = new (require '../services/ContentDirectory')(@)
+        
+        @services = {}
+        @services.ContentDirectory  = new (require '../services/ContentDirectory')(@)
         @services.ConnectionManager = new (require '../services/ConnectionManager')(@)
         @redis = redis.createClient()
         @redis.on 'error', (err) ->
             throw err if err?
         # Flush database. FIXME.
         @redis.flushdb()
-        super name, schema
-
 
     addMedia: (parentID, media, callback) ->
 
-        buildContainer = (obj) =>
+        buildObject = (obj, parent) ->
+            # If an object has children, it's a container.
+            if obj.children?
+                buildContainer(obj)
+            else
+                buildItem(obj, parent)
+
+        buildContainer = (obj) ->
             cnt =
                 class: 'object.container.'
-                restricted: '0'
             switch obj.type
                 when 'musicalbum'
                     cnt.class +='album.musicAlbum'
@@ -55,7 +60,6 @@ class MediaServer extends Device
         buildItem = (obj, parent) =>
             item =
                 class: 'object.item'
-                restricted: '0'
                 title: obj.title or 'Untitled'
                 creator: obj.creator or parent.creator
                 res: obj.location
@@ -65,7 +69,7 @@ class MediaServer extends Device
 
             # Try to figure out type from parent type.
             obj.type ?=
-                switch parent.type
+                switch parent?.type
                     when 'musicalbum' or'musicartist' or 'musicgenre'
                         'musictrack'
                     when 'photoalbum'
@@ -99,38 +103,30 @@ class MediaServer extends Device
                     else
                         ''
             item
+        
+        # Insert root element and then iterate through its children and insert them.
+        @insertContent parentID, buildObject(media), (err, id) =>
+            buildChildren id, media
 
-        cnt = buildContainer media
-        @insertContainer parentID, cnt, (err, cntId) =>
-            for child in media.children
-                item = buildItem child, media
-                @insertItem cntId, item, (err, itemId) ->
-                    console.log itemId
+        buildChildren = (parentID, parent) =>
+            parent.children ?= []
+            for child in parent.children
+                @insertContent parentID, buildObject(child, parent), (err, childID) ->
+                    buildChildren childID, child
 
-    insertContainer: (parentID, cnt, callback) ->
+    # Add object to Redis data store.
+    insertContent: (parentID, object, callback) ->
+        type = /object\.(\w+)/.exec(object.class)[1]
         # Increment and return Object ID.
-        @redis.incr "#{@uuid}:next", (err, id) =>
-            # Add Object ID to parent object's child set.
-            @redis.sadd "#{@uuid}:container:#{parentID}:children", id
-            # Increment each time container is modified.
-            @redis.incr "#{@uuid}:container:#{id}:updateid"
-            # Add ID's to container data structure and insert into database.
-            cnt.id = id
-            cnt.parentid = parentID
-            @redis.hmset "#{@uuid}:container:#{id}", cnt
-            callback err, id
-
-    insertItem: (parentID, item, callback) ->
-        # Increment and return Object ID.
-        @redis.incr "#{@uuid}:next", (err, id) =>
-            # Add Object ID to parent object's child set.
-            @redis.sadd "#{@uuid}:container:#{parentID}:children", id
-            # Increment each time parent container is modified.
-            @redis.incr "#{@uuid}:container:#{parentID}:updateid"
-            # Add ID's to item data structure and insert into database.
-            item.id = id
-            item.parentid = parentID
-            @redis.hmset "#{@uuid}:item:#{id}", item
+        @redis.incr "#{@uuid}:nextid", (err, id) =>
+            # Add Object ID to parent containers's child set.
+            @redis.sadd "#{@uuid}:#{parentID}:children", id
+            # Increment each time container (or parent container) is modified.
+            @redis.incr "#{@uuid}:#{if type is 'container' then id else parentID}:updateid"
+            # Add ID's to item data structure and insert into data store.
+            object.id = id
+            object.parentid = parentID
+            @redis.hmset "#{@uuid}:#{id}", object
             callback err, id
 
 module.exports = MediaServer

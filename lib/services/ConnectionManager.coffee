@@ -5,8 +5,8 @@ Service = require './Service'
 
 class ConnectionManager extends Service
 
-    constructor: (@device, type) ->
-        super device, type
+    constructor: (@device) ->
+        super
         @type = 'ConnectionManager'
         @stateVars =
             SourceProtocolInfo:

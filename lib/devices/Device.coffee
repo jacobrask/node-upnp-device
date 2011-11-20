@@ -21,7 +21,6 @@ class Device
         helpers.getUuid.call @, (err, uuid) =>
             @uuid = "uuid:#{uuid}"
             callback null, @
-        @
 
     # Start HTTP server and SSDP handler.
     start: (callback) ->
@@ -30,7 +29,6 @@ class Device
             @httpPort = serverInfo.port
             ssdp.start.call @
             callback null, "#{@type} device started on #{@httpAddress}."
-        @
 
     _buildDescription: xml.buildDescription
 

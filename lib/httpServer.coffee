@@ -1,5 +1,4 @@
-# HTTP helpers. If they depend on Device state they will be exported and
-# added as Device prototypes.
+# HTTP server for descriptions, actions and controls.
 
 fs   = require 'fs'
 http = require 'http'
@@ -75,8 +74,7 @@ exports.start = (callback) ->
 
         serviceEventHandler = =>
             console.info "#{req.method} on #{serviceType} received from #{req.client.remoteAddress}."
-            {sid, nt, timeout} = req.headers
-            cbUrls = req.headers.callback
+            {sid, nt, timeout, callback: cbUrls} = req.headers
 
             switch req.method
 

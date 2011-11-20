@@ -5,10 +5,9 @@ Service = require './Service'
 
 class ContentDirectory extends Service
 
-    constructor: (@device, type) ->
-        super device, type
+    constructor: (@device) ->
+        super
         @type = 'ContentDirectory'
-        @contentTypes = []
         @stateVars =
             SystemUpdateID:
                 value: 0
@@ -24,6 +23,7 @@ class ContentDirectory extends Service
                 evented: false
 
     addContentType: (type) ->
+        @contentTypes ?= []
         unless type in @contentTypes
             @contentTypes.push type
             @emit 'newContentType'

@@ -3,13 +3,12 @@
     "version": "0.0.1",
     "description": "Create UPnP devices.",
     "dependencies": {
-        "coffee-script": ">=1.1.2",
+        "coffee-script": "*",
         "xml": ">=0.0.5",
-        "http": ">=0.0.0",
-        "node-uuid": ">=1.2.0"
-    }, 
-    "devDependencies": {
-        "xml2js": ">=0.1.11"
+        "node-uuid": ">=1.2.0",
+        "xml2js": ">=0.1.11",
+        "mime": ">=1.2.4",
+        "redis": ">=0.7.1"
     },
     "author": "Jacob Rask (http://jacobrask.net)"
 }

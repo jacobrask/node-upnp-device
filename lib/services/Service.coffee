@@ -3,7 +3,7 @@
 
 {EventEmitter} = require 'events'
 makeUuid = require 'node-uuid'
-xml2js = require 'xml2js'
+xml2js   = require 'xml2js'
 
 httpu    = require '../httpu'
 protocol = require '../protocol'
@@ -16,9 +16,8 @@ unless /upnp-device/.test process.env.NODE_DEBUG
 class Service extends EventEmitter
 
     constructor: (@device) ->
-        @xmlParser = new xml2js.Parser()
-        @subscriptions = {}
-
+    
+    xmlParser: new xml2js.Parser()
 
     # Control action. Most actions build a SOAP response and calls back.
     action: (action, data, callback) ->
@@ -27,10 +26,10 @@ class Service extends EventEmitter
             @[action] options, (err, data) ->
                 callback err, data
 
-
     # Event subscriptions.
     subscribe: (cbUrls, reqTimeout, callback) ->
         uuid = "uuid:#{makeUuid()}"
+        @subscriptions ?= {}
         @subscriptions[uuid] = new Subscription(
             uuid
             cbUrls
@@ -84,7 +83,6 @@ class Subscription
         @minTimeout = 1800
         @callbackUrls = urls.split(',')
         console.info "Added new subscription for #{@service.type} with #{@uuid}."
-        
         @notify()
 
     selfDestruct: (timeout) ->
@@ -106,8 +104,8 @@ class Subscription
         # even if only one variable changed.
         console.info "Sending out event for current state variables to", @callbackUrls
         eventedVars = {}
-        for key, val of @service.stateVars
-            eventedVars[key] = val.value if val.evented
+        for key, val of @service.stateVars when val.evented
+            eventedVars[key] = val.value
         @service.buildEvent eventedVars, (err, resp) =>
             httpu.postEvent.call(
                 @service.device
