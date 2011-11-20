@@ -7,24 +7,27 @@ upnp-device is currently in a ___very early development phase___. The first targ
 
 # Features so far
 
-* MediaServer:1
- * Device and service descriptions over HTTP.
- * ConnectionManager service.
+* Device and service descriptions.
 * SSDP notifications and replies.
+* Events, subscriptions and control actions.
+* MediaServer:1
+ * ConnectionManager service.
 
 
 # Install
 
 upnp-device is not ready for npm yet, so you need to install manually by cloning this repository.
 
-Additionally, to use the MediaServer device you need to install [redis][http://redis.io]. 
+Node 0.4.12 is recommended. upnp-device is ___not___ compatible with Node 0.6.x due to some missing UDP features in 0.6.x. They are expected to be implemented fairly soon, and then upnp-device will be ported to 0.6.x.
+
+Additionally, to use the MediaServer device you need to install [redis](http://redis.io).
 
 
 # Documentation
 
 ## Basic usage
 
-Node 0.4.12 recommended. upnp-device is ___not___ compatible with Node 0.6.0 due to some missing UDP features in 0.6.0.
+### JavaScript
 
 ```javascript
 var upnp = require('upnp-device');
@@ -33,10 +36,21 @@ upnp.createDevice('MediaServer', 'My Media Application', startDevice);
 
 var startDevice = function(err, device) {
     device.start();
-    device.addMedia(parentId, media, function(err, id) {
+    device.addMedia(0, media, function(err, id) {
         console.log("Added new media with ID:" + id);
     });
 };
+```
+
+### CoffeeScript
+
+```coffeescript
+upnp = require 'upnp-device'
+
+upnp.createDevice 'MediaServer', 'My Media Application', (err, device) ->
+    device.start()
+    device.addMedia 0, media, (err, id) ->
+        console.log "Added new media with ID: #{id}"
 ```
 
 ## API
@@ -84,7 +98,7 @@ The metadata needs to be extracted by the client, either through user input or b
 }
 ```
 
-This might look slightly complex, but all most properties are optional and many inherit from parents. Some more examples:
+This might look slightly complex, but most properties are optional and many inherit from parents. Another example:
 
 ```javascript
 {
