@@ -2,6 +2,7 @@
 # http://upnp.org/specs/av/av1/
 
 Service = require './Service'
+{SoapError} = require '../xml'
 
 class ContentDirectory extends Service
 
@@ -29,9 +30,24 @@ class ContentDirectory extends Service
             @emit 'newContentType'
 
     Browse: (options, callback) ->
+
+        browseCallback = (err, resp) =>
+            if err
+                @buildSoapError err, callback
+            else
+                callback resp
+
+        switch options.BrowseFlag
+            when 'BrowseDirectChildren'
+                @browseChildren options, browseCallback
+            when 'BrowseMetadata'
+                @browseMetadata options, browseCallback
+            else
+                browseCallback new SoapError '402'
+
+    browseChildren: (options, callback) ->
         {
             ObjectID: id
-            BrowseFlag: flag
             Filter: filter
             StartingIndex: start
             RequestedCount: num
@@ -39,7 +55,15 @@ class ContentDirectory extends Service
         } = options
 
         @device.fetchChildren id, (err, object) ->
+            return callback err if err
+            callback err, object
+
+    browseMetadata: (options, callback) ->
+        { ObjectID: id, Filter: filter } = options
+
+        @device.fetchObject id, (err, object) ->
             console.log object
+
 
     GetSearchCapabilities: (options, callback) ->
         @getStateVar 'SearchCapabilities', 'SearchCaps', callback

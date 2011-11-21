@@ -52,10 +52,7 @@ class Service extends EventEmitter
 
     # For optional actions not (yet) implemented.
     optionalAction: (options, callback) ->
-        @buildSoapError(
-            code: 602, description: "Optional Action Not Implemented"
-            callback
-        )
+        @buildSoapError(new SoapError(602), callback)
 
     # Several Service actions only serve to return a State Variable.
     getStateVar: (varName, elName, callback) ->

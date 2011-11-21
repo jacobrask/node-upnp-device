@@ -6,6 +6,7 @@ mime = require 'mime'
 redis = require 'redis'
 
 Device = require('./Device')
+{SoapError} = require '../xml'
 
 class MediaServer extends Device
 
@@ -130,16 +131,20 @@ class MediaServer extends Device
             @redis.hmset "#{@uuid}:#{id}", object
             callback err, id
 
+    # Get all direct children of ID.
     fetchChildren: (id, callback) ->
-        children = []
         @redis.smembers "#{@uuid}:#{id}:children", (err, childIds) =>
+            if err
+                return callback new SoapError 501
+            unless childIds.length
+                return callback new SoapError 701
             async.concat(
                 childIds
                 (cId, callback) => @redis.hgetall "#{@uuid}:#{cId}", callback
                 callback
             )
 
-    fetchContent: (id, callback) ->
+    fetchObject: (id, callback) ->
         @redis.hgetall "#{@uuid}:#{id}", callback
 
 module.exports = MediaServer

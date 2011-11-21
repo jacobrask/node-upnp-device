@@ -87,7 +87,7 @@ exports.buildSoapError = (error, callback) ->
                         'UPnPError': [
                             _attr: { 'xmlns:e': protocol.makeNameSpace.call(@, 'control') }
                             { errorCode: error.code }
-                            { errorDescription: error.description }
+                            { errorDescription: error.message }
                         ]
                     ] }
                 ]
@@ -108,3 +108,21 @@ exports.buildEvent = (vars, callback) ->
         ]
     ]
     callback null, resp
+
+
+# Create an error object out of predefined UPnP SOAP
+# error code-message combinations.
+class SoapError extends Error
+    constructor: (@code) ->
+        STATUS_CODES =
+            401: "Invalid Action"
+            402: "Invalid Args"
+            501: "Action Failed"
+            600: "Argument Value Invalid"
+            601: "Argument Value Out of Range"
+            602: "Optional Action Not Implemented"
+            604: "Human Intervention Required"
+            701: "No Such Object"
+            709: "Invalid Sort Criteria"
+        @message = STATUS_CODES[@code]
+exports.SoapError = SoapError
