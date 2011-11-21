@@ -1,14 +1,15 @@
 {
     "name": "upnp-device",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "description": "Create UPnP devices.",
     "dependencies": {
+        "async": "*",
         "coffee-script": "*",
-        "xml": ">=0.0.5",
-        "node-uuid": ">=1.2.0",
-        "xml2js": ">=0.1.11",
         "mime": ">=1.2.4",
-        "redis": ">=0.7.1"
+        "node-uuid": "*",
+        "redis": ">=0.7.1",
+        "xml": ">=0.0.5",
+        "xml2js": ">=0.1.11"
     },
     "author": "Jacob Rask (http://jacobrask.net)"
 }

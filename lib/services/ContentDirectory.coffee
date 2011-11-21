@@ -28,6 +28,19 @@ class ContentDirectory extends Service
             @contentTypes.push type
             @emit 'newContentType'
 
+    Browse: (options, callback) ->
+        {
+            ObjectID: id
+            BrowseFlag: flag
+            Filter: filter
+            StartingIndex: start
+            RequestedCount: num
+            SortCriteria: sort
+        } = options
+
+        @device.fetchChildren id, (err, object) ->
+            console.log object
+
     GetSearchCapabilities: (options, callback) ->
         @getStateVar 'SearchCapabilities', 'SearchCaps', callback
 

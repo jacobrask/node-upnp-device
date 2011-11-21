@@ -1,6 +1,7 @@
 # Implements MediaServer:1
 # http://upnp.org/specs/av/av1/
 
+async = require 'async'
 mime = require 'mime'
 redis = require 'redis'
 
@@ -128,5 +129,17 @@ class MediaServer extends Device
             object.parentid = parentID
             @redis.hmset "#{@uuid}:#{id}", object
             callback err, id
+
+    fetchChildren: (id, callback) ->
+        children = []
+        @redis.smembers "#{@uuid}:#{id}:children", (err, childIds) =>
+            async.concat(
+                childIds
+                (cId, callback) => @redis.hgetall "#{@uuid}:#{cId}", callback
+                callback
+            )
+
+    fetchContent: (id, callback) ->
+        @redis.hgetall "#{@uuid}:#{id}", callback
 
 module.exports = MediaServer

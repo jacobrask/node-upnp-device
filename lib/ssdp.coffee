@@ -1,5 +1,6 @@
 # SSDP helpers. Messages use HTTP and are generated in the `httpu` module.
 
+async = require 'async'
 dgram = require 'dgram'
 os    = require 'os'
 
@@ -45,13 +46,12 @@ exports.start = (callback) ->
         # Messages with specified destination do not need TTL limit.
         socket.setTTL 4 unless address?
         socket.bind()
-        console.info "Sending #{messages.length} messages
- to #{address}:#{port}."
-        done = messages.length
-        for msg in messages
-            socket.send msg, 0, msg.length, port, address, ->
-                if done-- is 1
-                    socket.close()
+        console.info "Sending #{messages.length} messages to #{address}:#{port}."
+        async.concat(
+            messages
+            (msg) -> socket.send msg, 0, msg.length, port, address
+            -> socket.close()
+        )
 
     announce = (timeout = 1800) =>
         # To "kill" any instances that haven't timed out on control points yet,
