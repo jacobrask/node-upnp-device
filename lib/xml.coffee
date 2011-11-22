@@ -1,4 +1,4 @@
-# XML helpers for SOAP and Device descriptions.
+# XML helpers for SOAP, Device descriptions and DIDL-Lite responses.
 # Run with a Device or Service as `@`.
 
 os  = require 'os'
@@ -108,6 +108,46 @@ exports.buildEvent = (vars, callback) ->
         ]
     ]
     callback null, resp
+
+
+exports.buildDidl = (data) ->
+
+    # Build an array of elements contained in an object element.
+    buildObject = (obj) ->
+        el = []
+        el.push {
+            _attr:
+                id: obj.id
+                parentID: obj.parentid
+                restricted: 'false'
+        }
+        el.push 'upnp:class': obj.class
+        el.push 'dc:title': obj.title
+        if obj.creator
+            el.push 'dc:creator': obj.creator
+        if obj.location
+            el.push 'res': [
+                _attr:
+                    protocolInfo: obj.protocol
+                    size: obj.filesize
+                obj.location ]
+        el
+
+    body = {}
+    body['DIDL-Lite'] = []
+    body['DIDL-Lite'].push(
+        _attr:
+            'xmlns': protocol.makeNameSpace.call(@, 'metadata') + '/DIDL-Lite/'
+            'xmlns:dc': 'http://purl.org/dc/elements/1.1/'
+            'xmlns:upnp': protocol.makeNameSpace.call(@, 'metadata') + '/upnp/'
+    )
+    for object in data
+        type = /object\.(\w+)/.exec(object.class)[1]
+        o = {}
+        o[type] = buildObject object
+        body['DIDL-Lite'].push o
+
+    xml [ body ]
 
 
 # Create an error object out of predefined UPnP SOAP

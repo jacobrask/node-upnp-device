@@ -147,17 +147,36 @@ class MediaServer extends Device
     # Get all direct children of ID.
     fetchChildren: (id, callback) ->
         @redis.smembers "#{@uuid}:#{id}:children", (err, childIds) =>
-            if err
-                return callback new SoapError 501
-            unless childIds.length
-                return callback new SoapError 701
+            return callback new SoapError 501 if err?
+            return callback new SoapError 701 unless childIds.length
             async.concat(
                 childIds
                 (cId, callback) => @redis.hgetall "#{@uuid}:#{cId}", callback
-                callback
+                (err, results) ->
+                    callback err, results
             )
 
     fetchObject: (id, callback) ->
-        @redis.hgetall "#{@uuid}:#{id}", callback
+        @redis.hgetall "#{@uuid}:#{id}", (err, object) ->
+            return callback new SoapError 501 if err?
+            return callback new SoapError 701 unless Object.keys(object).length > 0
+            callback null, object
+
+    getUpdateId: (id, callback) ->
+        getId = (id, callback) =>
+            @redis.get "#{@uuid}:#{id}:updateid", (err, updateId) ->
+                return callback new SoapError 501 if err?
+                callback null, updateId
+
+        if id is 0
+            return callback null, @services.ContentDirectory.stateVars.SystemUpdateID.value
+        else
+            @redis.exists "#{@uuid}:#{id}:updateid", (err, exists) =>
+                # If this ID doesn't have an updateid key, get parent's updateid.
+                if exists is 1
+                    getId id, callback
+                else
+                    @redis.hget "#{@uuid}:#{id}", 'parentid', (err, parentId) =>
+                        getId parentId, callback
 
 module.exports = MediaServer

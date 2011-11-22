@@ -72,6 +72,7 @@ class Service extends EventEmitter
     buildSoapResponse: xml.buildSoapResponse
     buildSoapError: xml.buildSoapError
     buildEvent: xml.buildEvent
+    buildDidl: xml.buildDidl
 
 
 class Subscription
@@ -83,6 +84,7 @@ class Subscription
         @notify()
 
     selfDestruct: (timeout) ->
+        clearTimeout(@destructionTimer) if @destructionTimer?
         # `timeout` is like `Second-(seconds|infinite)`.
         time = /Second-(infinite|\d+)/.exec(timeout)[1]
         if time is 'infinite' or parseInt(time) > @minTimeout
@@ -90,7 +92,7 @@ class Subscription
         else
             time = parseInt(time)
         console.log "Subscription #{@uuid} expiring in #{time}s."
-        setTimeout(
+        @destructionTimer = setTimeout(
             => @service.unsubscribe(@uuid)
             time * 1000)
         # Return actual time until unsubscription.

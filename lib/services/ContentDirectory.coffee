@@ -4,6 +4,7 @@
 Service = require './Service'
 {SoapError} = require '../xml'
 
+# Capitalized properties are native UPnP control actions.
 class ContentDirectory extends Service
 
     constructor: (@device) ->
@@ -35,9 +36,9 @@ class ContentDirectory extends Service
             if err
                 @buildSoapError err, callback
             else
-                callback resp
+                callback null, resp
 
-        switch options.BrowseFlag
+        switch options?.BrowseFlag
             when 'BrowseDirectChildren'
                 @browseChildren options, browseCallback
             when 'BrowseMetadata'
@@ -46,23 +47,42 @@ class ContentDirectory extends Service
                 browseCallback new SoapError '402'
 
     browseChildren: (options, callback) ->
+        id = parseInt(options.ObjectID)
+        max = parseInt(options.RequestedCount)
         {
-            ObjectID: id
             Filter: filter
             StartingIndex: start
-            RequestedCount: num
             SortCriteria: sort
         } = options
 
-        @device.fetchChildren id, (err, object) ->
+        @device.fetchChildren id, (err, objects) =>
             return callback err if err
-            callback err, object
+            max = objects.length if max is 0
+            matches = objects[0..max]
+            @device.getUpdateId id, (err, updateId) =>
+                @buildSoapResponse(
+                    'Browse'
+                    NumberReturned: matches.length
+                    TotalMatches: objects.length
+                    Result: @buildDidl matches
+                    UpdateID: updateId
+                    callback
+                )
 
     browseMetadata: (options, callback) ->
         { ObjectID: id, Filter: filter } = options
 
-        @device.fetchObject id, (err, object) ->
-            console.log object
+        @device.fetchObject id, (err, object) =>
+            return callback err if err
+            @device.getUpdateId id, (err, updateId) =>
+                @buildSoapResponse(
+                    'Browse'
+                    NumberReturned: 1
+                    TotalMatches: 1
+                    Result: @buildDidl [ object ]
+                    UpdateID: updateId
+                    callback
+                )
 
 
     GetSearchCapabilities: (options, callback) ->
