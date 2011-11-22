@@ -16,15 +16,13 @@ unless /upnp-device/.test process.env.NODE_DEBUG
 class Service extends EventEmitter
 
     constructor: (@device) ->
-    
-    xmlParser: new xml2js.Parser()
 
     # Control action. Most actions build a SOAP response and calls back.
     action: (action, data, callback) ->
-        @xmlParser.parseString data, (err, data) =>
+        xmlParser = new xml2js.Parser()
+        xmlParser.parseString data, (err, data) =>
             options = data['s:Body']["u:#{action}"]
-            @[action] options, (err, data) ->
-                callback err, data
+            @[action] options, callback
 
     # Event subscriptions.
     subscribe: (cbUrls, reqTimeout, callback) ->

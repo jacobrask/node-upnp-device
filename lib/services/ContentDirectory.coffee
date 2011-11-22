@@ -34,31 +34,29 @@ class ContentDirectory extends Service
 
         browseCallback = (err, resp) =>
             if err
+                console.warn "Browse action caused #{err.message}."
                 @buildSoapError err, callback
             else
                 callback null, resp
 
         switch options?.BrowseFlag
-            when 'BrowseDirectChildren'
-                @browseChildren options, browseCallback
             when 'BrowseMetadata'
                 @browseMetadata options, browseCallback
             else
-                browseCallback new SoapError '402'
+                # Should be `BrowseDirectChildren`, but default to
+                # `browseChildren` for devices which don't send BrowseFlag.
+                @browseChildren options, browseCallback
 
     browseChildren: (options, callback) ->
-        id = parseInt(options.ObjectID)
-        max = parseInt(options.RequestedCount)
-        {
-            Filter: filter
-            StartingIndex: start
-            SortCriteria: sort
-        } = options
+        id    = parseInt(options?.ObjectID or 0)
+        start = parseInt(options?.StartingIndex or 0)
+        max   = parseInt(options?.RequestedCount or 0)
 
         @device.fetchChildren id, (err, objects) =>
             return callback err if err
-            max = objects.length if max is 0
-            matches = objects[0..max]
+            # Limit matches. Should be done before fetch instead.
+            end = if max is 0 then objects.length - 1 else start + max
+            matches = objects[start..end]
             @device.getUpdateId id, (err, updateId) =>
                 @buildSoapResponse(
                     'Browse'
@@ -70,8 +68,7 @@ class ContentDirectory extends Service
                 )
 
     browseMetadata: (options, callback) ->
-        { ObjectID: id, Filter: filter } = options
-
+        id = parseInt(options?.ObjectID or 0)
         @device.fetchObject id, (err, object) =>
             return callback err if err
             @device.getUpdateId id, (err, updateId) =>
