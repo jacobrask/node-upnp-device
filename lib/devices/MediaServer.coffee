@@ -2,7 +2,8 @@
 # http://upnp.org/specs/av/av1/
 
 async = require 'async'
-mime = require 'mime'
+fs    = require 'fs'
+mime  = require 'mime'
 redis = require 'redis'
 
 Device = require('./Device')
@@ -26,14 +27,14 @@ class MediaServer extends Device
 
     addMedia: (parentID, media, callback) ->
 
-        buildObject = (obj, parent) ->
+        buildObject = (obj, parent, callback) ->
             # If an object has children, it's a container.
             if obj.children?
-                buildContainer(obj)
+                buildContainer obj, callback
             else
-                buildItem(obj, parent)
+                buildItem obj, parent, callback
 
-        buildContainer = (obj) ->
+        buildContainer = (obj, callback) ->
             cnt =
                 class: 'object.container.'
             switch obj.type
@@ -57,17 +58,18 @@ class MediaServer extends Device
                 else
                     cnt.class += 'storageFolder'
                     cnt.title = obj.title or 'Folder'
-            cnt
+            callback null, cnt
 
-        buildItem = (obj, parent) =>
+        buildItem = (obj, parent, callback) =>
             item =
                 class: 'object.item'
                 title: obj.title or 'Untitled'
                 creator: obj.creator or parent.creator
-                res: obj.location
+                location: obj.location
 
             mimeType = mime.lookup(obj.location)
             @services.ContentDirectory.addContentType mimeType
+            item.protocol = "http-get:*:#{mimeType}:*"
 
             # Try to figure out type from parent type.
             obj.type ?=
@@ -104,17 +106,28 @@ class MediaServer extends Device
                         '.textItem'
                     else
                         ''
-            item
+
+            fs.stat obj.location, (err, stats) ->
+                if err
+                    console.warn "Error reading file #{obj.location}, setting file size to 0."
+                    item.filesize = 0
+                else
+                    item.filesize = stats.size
+                callback null, item
         
         # Insert root element and then iterate through its children and insert them.
-        @insertContent parentID, buildObject(media), (err, id) =>
-            buildChildren id, media
+        buildObject media, null, (err, object) =>
+            @insertContent parentID, object, (err, id) =>
+                # Call back with "top-most" ID as soon as we know it.
+                callback err, id
+                buildChildren id, media
 
         buildChildren = (parentID, parent) =>
             parent.children ?= []
             for child in parent.children
-                @insertContent parentID, buildObject(child, parent), (err, childID) ->
-                    buildChildren childID, child
+                buildObject child, parent, (err, object) =>
+                    @insertContent parentID, object, (err, childID) ->
+                        buildChildren childID, child
 
     # Add object to Redis data store.
     insertContent: (parentID, object, callback) ->
