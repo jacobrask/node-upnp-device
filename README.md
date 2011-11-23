@@ -121,30 +121,9 @@ This might look slightly complex, but most properties are optional and many inhe
 
 Applies to MediaServer.
 
-* id - ID of container to remove. All its children will be removed. Currently individual items cannot be removed.
+* id - ID of object to remove. If it has children, they will also be removed.
 * [callback(err)]
 
-### device.getChildren(id, callback)
-
-Applies to MediaServer.
-
-* id - Container ID.
-* callback(err, children) - Returns an array of objects with the container's immediate children. Can be containers or items.
-
-```javascript
-{
-    id: '1290',
-    title: 'Ice Ice Baby',
-    creator: 'Vanilla Ice',
-    date: '1990',
-    res: '/media/music/vanilla_ice-ice_ice_baby.mp3'
-}
-```
-
-# See also
-
- * [UPnP client](https://github.com/TooTallNate/node-upnp-client) by TooTallNate
- * [UPnP.org][upnp]
 
 # Development
 
@@ -161,5 +140,20 @@ $ node myapp.js
 
 Contributions and comments are welcome on GitHub or IRC (jacobrask@FreeNode).
 
+## Acronyms
+
+* **UDA**: [UPnP Device Architecture] [upnp-uda]
+* **DCP**: [UPnP Device Control Protocol] [upnp-dcp]
+* **UPnP AV**: [UPnP Audio/Video] [upnp-av]
+* **DIDL**: Digital Item Declaration Language, XML dialect for describing media. To describe content in AV devices, UPnP uses DIDL-Lite, a subset of DIDL.
+
+
+# See also
+
+ * [UPnP.org][upnp]
+ * [UPnP client](https://github.com/TooTallNate/node-upnp-client) by TooTallNate
+
 [upnp]: http://upnp.org
 [upnp-dcp]: http://upnp.org/sdcps-and-certification/standards/sdcps/
+[upnp-uda]: http://upnp.org/sdcps-and-certification/standards/device-architecture-documents/
+[upnp-av]: http://upnp.org/specs/av/av1/
