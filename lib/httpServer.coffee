@@ -12,10 +12,10 @@ xml     = require './xml'
 unless /upnp-device/.test process.env.NODE_DEBUG
     (console[c] = ->) for c in ['log', 'info']
 
-# `@` should be bound to a Device.
+# HTTP servers are device specific, so `@` should be bound to a device.
 exports.start = (callback) ->
 
-    # Create server and add request listener.
+    # ## Request listener.
     server = http.createServer (req, res) =>
 
         console.log "#{req.url} requested by #{req.headers['user-agent']} at #{req.client.remoteAddress}."
@@ -24,7 +24,7 @@ exports.start = (callback) ->
 
             if err?
                 # `err` is an instance of `HttpError`.
-                # See Device specification for details on errors.
+                # See UDA for details on errors.
                 console.warn "Responded with #{err.code}: #{err.message} for #{req.url}."
                 res.writeHead err.code, 'Content-Type': 'text/plain'
                 res.write "#{err.code} - #{err.message}"
@@ -44,7 +44,6 @@ exports.start = (callback) ->
                 res.write data if data?
 
             res.end()
-
 
     handler = (req, callback) =>
 
@@ -104,13 +103,13 @@ exports.start = (callback) ->
                     if nt? or cbUrls?
                         return callback new HttpError 400
                     @services[serviceType].unsubscribe sid
-                    # Response is simply `200 OK`.
+                    # Unsubscription response is `200 OK`.
                     callback()
 
                 else
                     callback new HttpError 405
 
-        # Request handler.
+        # ## Request handler.
         switch category
 
             when 'device'

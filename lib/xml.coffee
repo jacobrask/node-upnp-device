@@ -110,6 +110,7 @@ exports.buildEvent = (vars, callback) ->
     callback null, resp
 
 
+# Build a DIDL XML structure for items/containers in the MediaServer device.
 exports.buildDidl = (data) ->
 
     # Build an array of elements contained in an object element.
@@ -119,10 +120,10 @@ exports.buildDidl = (data) ->
             _attr:
                 id: obj.id
                 parentID: obj.parentid
-                restricted: 'false'
+                restricted: 'true'
         }
-        el.push 'upnp:class': obj.class
         el.push 'dc:title': obj.title
+        el.push 'upnp:class': obj.class
         if obj.creator
             el.push 'dc:creator': obj.creator
         if obj.location

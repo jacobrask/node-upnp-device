@@ -1,4 +1,4 @@
-# Implements [UPnP Device Architecture version 1.0] [1]
+# Implements [UPnP Device Architecture version 1.0] [1].
 #
 # [1]: http://upnp.org/sdcps-and-certification/standards/device-architecture-documents/
 

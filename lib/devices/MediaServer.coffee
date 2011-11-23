@@ -1,5 +1,6 @@
-# Implements MediaServer:1
-# http://upnp.org/specs/av/av1/
+# Implements [MediaServer:1] [1].
+#
+# [1]: http://upnp.org/specs/av/av1/
 
 async = require 'async'
 fs    = require 'fs'
@@ -58,6 +59,8 @@ class MediaServer extends Device
                 else
                     cnt.class += 'storageFolder'
                     cnt.title = obj.title or 'Folder'
+
+            cnt.class = 'object.container'
             callback null, cnt
 
         buildItem = (obj, parent, callback) =>

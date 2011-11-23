@@ -1,5 +1,6 @@
-# Implements ContentDirectory:1
-# http://upnp.org/specs/av/av1/
+# Implements [ContentDirectory:1] [1].
+#
+# [1]: http://upnp.org/specs/av/av1/
 
 Service = require './Service'
 {SoapError} = require '../xml'
@@ -10,6 +11,7 @@ class ContentDirectory extends Service
     constructor: (@device) ->
         super
         @type = 'ContentDirectory'
+        # If a var is evented, it is included in notifications to subscribers.
         @stateVars =
             SystemUpdateID:
                 value: 0
@@ -30,22 +32,6 @@ class ContentDirectory extends Service
             @contentTypes.push type
             @emit 'newContentType'
 
-    Browse: (options, callback) ->
-
-        browseCallback = (err, resp) =>
-            if err
-                console.warn "Browse action caused #{err.message}."
-                @buildSoapError err, callback
-            else
-                callback null, resp
-
-        switch options?.BrowseFlag
-            when 'BrowseMetadata'
-                @browseMetadata options, browseCallback
-            else
-                # Should be `BrowseDirectChildren`, but default to
-                # `browseChildren` for devices which don't send BrowseFlag.
-                @browseChildren options, browseCallback
 
     browseChildren: (options, callback) ->
         id    = parseInt(options?.ObjectID or 0)
@@ -81,6 +67,21 @@ class ContentDirectory extends Service
                     callback
                 )
 
+    Browse: (options, callback) ->
+        browseCallback = (err, resp) =>
+            if err
+                console.warn "Browse action caused #{err.message}."
+                @buildSoapError err, callback
+            else
+                callback null, resp
+
+        switch options?.BrowseFlag
+            when 'BrowseMetadata'
+                @browseMetadata options, browseCallback
+            when 'BrowseDirectChildren'
+                @browseChildren options, browseCallback
+            else
+                browseCallback new SoapError 402
 
     GetSearchCapabilities: (options, callback) ->
         @getStateVar 'SearchCapabilities', 'SearchCaps', callback

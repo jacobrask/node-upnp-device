@@ -1,4 +1,4 @@
-# SSDP helpers. Messages use HTTP and are generated in the `httpu` module.
+# SSDP server/client. Messages use HTTP and are generated in the `httpu` module.
 
 async = require 'async'
 dgram = require 'dgram'
