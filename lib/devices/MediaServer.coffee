@@ -147,7 +147,18 @@ class MediaServer extends Device
             @redis.hmset "#{@uuid}:#{id}", object
             callback err, id
 
-    # Get all direct children of ID.
+    # Remove object with @id and all its children.
+    removeContent: (id, callback) ->
+        @redis.smembers "#{@uuid}:#{id}:children", (err, childIds) =>
+            return callback new SoapError 501 if err?
+            for childId in childIds
+                @redis.del "#{@uuid}:#{childId}"
+            @redis.del [ "#{@uuid}:#{id}", "#{@uuid}:#{id}:children", "#{@uuid}:#{id}:updateid" ]
+            # Return value shouldn't matter to client, at least for now.
+            # If the smembers call worked at least we know the db is working.
+            callback null
+
+    # Get metadata of all direct children of object with @id.
     fetchChildren: (id, callback) ->
         @redis.smembers "#{@uuid}:#{id}:children", (err, childIds) =>
             return callback new SoapError 501 if err?
@@ -159,6 +170,7 @@ class MediaServer extends Device
                     callback err, results
             )
 
+    # Get metadata of object with @id.
     fetchObject: (id, callback) ->
         @redis.hgetall "#{@uuid}:#{id}", (err, object) ->
             return callback new SoapError 501 if err?
