@@ -4,7 +4,8 @@
 os  = require 'os'
 xml = require 'xml'
 
-helpers = require './helpers'
+helpers  = require './helpers'
+httpu    = require './httpu'
 protocol = require './protocol'
 
 # Build device description XML document. `@` is bound to a Device.
@@ -114,7 +115,7 @@ exports.buildEvent = (vars, callback) ->
 exports.buildDidl = (data) ->
 
     # Build an array of elements contained in an object element.
-    buildObject = (obj) ->
+    buildObject = (obj) =>
         el = []
         el.push {
             _attr:
@@ -126,12 +127,13 @@ exports.buildDidl = (data) ->
         el.push 'upnp:class': obj.class
         if obj.creator
             el.push 'dc:creator': obj.creator
+            el.push 'upnp:artist': obj.creator
         if obj.location
             el.push 'res': [
                 _attr:
-                    protocolInfo: obj.protocol
+                    protocolInfo: "http-get:*:#{obj.contenttype}:*"
                     size: obj.filesize
-                obj.location ]
+                httpu.makeContentUrl.call(@, obj.id) ]
         el
 
     body = {}

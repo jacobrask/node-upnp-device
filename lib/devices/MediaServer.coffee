@@ -70,9 +70,9 @@ class MediaServer extends Device
                 creator: obj.creator or parent.creator
                 location: obj.location
 
-            mimeType = mime.lookup(obj.location)
-            @services.ContentDirectory.addContentType mimeType
-            item.protocol = "http-get:*:#{mimeType}:*"
+            contentType = obj.contetType or mime.lookup(obj.location)
+            @services.ContentDirectory.addContentType contentType
+            item.contenttype = contentType
 
             # Try to figure out type from parent type.
             obj.type ?=

@@ -20,7 +20,7 @@ exports.start = (callback) ->
 
         console.log "#{req.url} requested by #{req.headers['user-agent']} at #{req.client.remoteAddress}."
 
-        handler req, (err, data, customHeaders) =>
+        handler req, (err, data, headers) =>
 
             if err?
                 # `err` is an instance of `HttpError`.
@@ -32,13 +32,11 @@ exports.start = (callback) ->
             else
                 # Make a header object for response.
                 # `null` means use `makeHeaders` function's default value.
-                headers = server: null
+                headers ?= {}
+                headers[server] ?= null
                 if data?
-                    headers['Content-Type'] = null
-                    headers['Content-Length'] = Buffer.byteLength(data)
-                # Some responses require custom headers.
-                for header, value of customHeaders
-                    headers[header] = value
+                    headers['Content-Type'] ?= null
+                    headers['Content-Length'] ?= Buffer.byteLength(data)
 
                 res.writeHead 200, httpu.makeHeaders.call(@, headers)
                 res.write data if data?
@@ -139,6 +137,18 @@ exports.start = (callback) ->
 
                     else
                         callback new HttpError 404
+
+            when 'resource'
+                @fetchObject action, (err, object) ->
+                    return callback new HttpError 500 if err
+                    fs.readFile object.location, (err, file) ->
+                        return callback new HttpError 500 if err
+                        callback(
+                            null
+                            file
+                            'Content-Type': object.contenttype
+                            'Content-Length': object.filesize
+                        )
 
             else
                 callback new HttpError 404

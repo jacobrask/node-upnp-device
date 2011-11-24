@@ -92,8 +92,8 @@ The metadata needs to be extracted by the client, either through user input or b
         language: 'Inherits from parent.',
         date: 'Inherits from parent.',
         genre: 'Music or movie genre. Inherits from parent.',
-        res: 'Path or URI to media resource.',
-        mimeType: 'Internet media type. Guessed from filename if possible.'
+        location: 'Path or URI to media resource.',
+        contentType: 'Internet media type. Guessed from filename if possible.'
     } ]
 }
 ```

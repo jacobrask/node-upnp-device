@@ -127,6 +127,15 @@ makeDescriptionUrl = (address, port)->
         pathname: '/device/description'
     )
 
+exports.makeContentUrl = (id) ->
+    url.format(
+        protocol: 'http:'
+        hostname: @device.httpAddress
+        port: @device.httpPort
+        pathname: "/resource/#{id}"
+    )
+
+
 # Use http module's `STATUS_CODES` static to get error messages.
 class HttpError extends Error
     constructor: (@code) ->
