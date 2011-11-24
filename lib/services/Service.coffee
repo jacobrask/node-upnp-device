@@ -10,9 +10,6 @@ protocol = require '../protocol'
 xml      = require '../xml'
 {HttpError} = httpu
 
-unless /upnp-device/.test process.env.NODE_DEBUG
-    (console[c] = ->) for c in ['log', 'info']
-
 class Service extends EventEmitter
 
     constructor: (@device) ->

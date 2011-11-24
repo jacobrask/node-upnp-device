@@ -7,9 +7,6 @@ os    = require 'os'
 httpu    = require './httpu'
 protocol = require './protocol'
 
-unless /upnp-device/.test process.env.NODE_DEBUG
-    (console[c] = ->) for c in ['log','info']
-
 # `@` should be bound to a Device.
 exports.start = (callback) ->
 

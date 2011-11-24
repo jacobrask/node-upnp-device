@@ -6,9 +6,6 @@ url  = require 'url'
 
 protocol = require './protocol'
 
-unless /upnp-device/.test process.env.NODE_DEBUG
-    (console[c] = ->) for c in ['log','info']
-
 # Generate an HTTP header object for HTTP and SSDP messages.
 makeHeaders = exports.makeHeaders = (customHeaders) ->
     # SSDP defaults.

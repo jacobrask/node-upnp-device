@@ -128,8 +128,6 @@ Applies to MediaServer.
 
 upnp-device is written in [CoffeeScript](http://coffeescript.org).
 
-`console.log` and `console.info` are muted by default, unmute with `NODE_DEBUG=upnp-device`:
-
 ```bash
 $ NODE_DEBUG=upnp-device node myapp.js
 # or

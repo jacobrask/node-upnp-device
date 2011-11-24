@@ -9,9 +9,6 @@ httpu   = require './httpu'
 xml     = require './xml'
 {HttpError} = httpu
 
-unless /upnp-device/.test process.env.NODE_DEBUG
-    (console[c] = ->) for c in ['log', 'info']
-
 # HTTP servers are device specific, so `@` should be bound to a device.
 exports.start = (callback) ->
 

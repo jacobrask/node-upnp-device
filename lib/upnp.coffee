@@ -1,6 +1,3 @@
-unless /upnp-device/.test process.env.NODE_DEBUG
-    (console[c] = ->) for c in ['log','info']
-
 # Currently implemented devices.
 deviceList = [ 'MediaServer' ]
 

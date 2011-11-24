@@ -1,10 +1,7 @@
 # Helper functions not large enough to warrant separate modules.
-fs     = require 'fs'
-uuid   = require 'node-uuid'
+fs   = require 'fs'
+uuid = require 'node-uuid'
 {exec} = require 'child_process'
-
-unless /upnp-device/.test process.env.NODE_DEBUG
-    (console[c] = ->) for c in ['log','info']
 
 # We need to get the server's internal network IP to send out in SSDP messages.
 # Only works on Linux and (probably) Mac.
@@ -57,4 +54,4 @@ exports.objToArr = (obj, arr) ->
         o = {}
         o[key] = obj[key]
         arr.push o
-    return arr
+    arr
