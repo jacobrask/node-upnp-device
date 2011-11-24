@@ -2,7 +2,7 @@
 
 upnp-device lets you create [UPnP Devices][upnp-dcp] in Node.js. The goal is to have an easy to use API, rather than exposing all UPnP internals.
 
-upnp-device is currently in a ___very early development phase___. The first target is to implement the MediaServer:1 specification.
+The only device currently (mostly) implemented is MediaServer:1.
 
 
 # Features so far
@@ -10,8 +10,7 @@ upnp-device is currently in a ___very early development phase___. The first targ
 * Device and service descriptions.
 * SSDP notifications and replies.
 * Events, subscriptions and control actions.
-* MediaServer:1
- * ConnectionManager service.
+* MediaServer:1 device with ConnectionManager and ContentDirectory services.
 
 
 # Install
