@@ -31,38 +31,32 @@ Additionally, to use the MediaServer device you need to install [redis](http://r
 ```javascript
 var upnp = require('upnp-device');
 
-upnp.createDevice('MediaServer', 'My Media Application', startDevice);
+var ms = upnp.createDevice('MediaServer', 'My Media Application');
 
-var startDevice = function(err, device) {
-    device.start();
-    device.addMedia(0, media, function(err, id) {
+ms.on('ready', function() {
+    ms.addMedia(0, media, function(err, id) {
         console.log("Added new media with ID:" + id);
     });
-};
-```
-
-### CoffeeScript
-
-```coffeescript
-upnp = require 'upnp-device'
-
-upnp.createDevice 'MediaServer', 'My Media Application', (err, device) ->
-    device.start()
-    device.addMedia 0, media, (err, id) ->
-        console.log "Added new media with ID: #{id}"
+    ms.announce();
+});
 ```
 
 ## API
 
-### upnp.createDevice(type, name, callback)
+### upnp.Device
 
-* type - A device specified by the [UPnP forum][upnp-dcp]. Only __MediaServer__ is currently supported.
+#### Event: 'ready'
+
+#### Event: 'error'
+
+### upnp.createDevice(type, name)
+
+* type - A device specified by the [UPnP Forum][upnp-dcp].
 * name - The name of the device as it shows up in the network.
-* callback(err, device) - Called when device creation's asynchronous operations are completed. Returns a device object.
 
-### device.start([callback])
+### device.announce()
 
-* `callback(err)` - Called when device servers (SSDP, HTTP) are started and the device has been announced to the network.
+Announces the device over SSDP to the local network.
 
 ### device.addMedia(parentID, media[, callback])
 
@@ -128,27 +122,21 @@ Applies to MediaServer.
 
 upnp-device is written in [CoffeeScript](http://coffeescript.org).
 
-```bash
-$ NODE_DEBUG=upnp-device node myapp.js
-# or
-$ export NODE_DEBUG=upnp-device
-$ node myapp.js
-```
-
 Contributions and comments are welcome on GitHub or IRC (jacobrask@FreeNode).
 
 ## Acronyms
 
 * **UDA**: [UPnP Device Architecture] [upnp-uda]
 * **DCP**: [UPnP Device Control Protocol] [upnp-dcp]
-* **UPnP AV**: [UPnP Audio/Video] [upnp-av]
 * **DIDL**: Digital Item Declaration Language, XML dialect for describing media. To describe content in AV devices, UPnP uses DIDL-Lite, a subset of DIDL.
+* **UPnP AV**: [UPnP Audio/Video] [upnp-av]
 
 
 # See also
 
  * [UPnP.org][upnp]
- * [UPnP client](https://github.com/TooTallNate/node-upnp-client) by TooTallNate
+ * [UPnP client](https://github.com/TooTallNate/node-upnp-client) by @TooTallNate
+ * [Gammatron](https://github.com/mattijs/Gammatron) by @mattijs
 
 [upnp]: http://upnp.org
 [upnp-dcp]: http://upnp.org/sdcps-and-certification/standards/sdcps/

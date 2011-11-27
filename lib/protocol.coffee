@@ -5,8 +5,8 @@
 
 # Make namespace string.
 exports.makeNameSpace = (category) ->
-    version = @schema?.version or @device.schema.version
-    prefix  = @schema?.prefix or @device?.schema.prefix
+    version = @schemaVersion or @device?.schemaVersion
+    prefix  = @schemaPrefix  or @device?.schemaPrefix
     prefix + ':' + [
         category
         version.split('.')[0]
@@ -15,11 +15,11 @@ exports.makeNameSpace = (category) ->
 # Make Device/Service type string for SSDP messages
 # and Service/Device descriptions.
 makeType = (category) ->
-    [ @schema?.prefix || @device.schema.prefix
+    [ @schemaPrefix || @device.schemaPrefix
       category
       @type
       @version || @device.version
     ].join ':'
 
-exports.makeDeviceType = -> makeType.call @, 'device'
+exports.makeDeviceType  = -> makeType.call @, 'device'
 exports.makeServiceType = -> makeType.call @, 'service'
