@@ -49,10 +49,11 @@ ms.on('ready', function() {
 
 #### Event: 'error'
 
-### upnp.createDevice(type, name)
+### upnp.createDevice(type, name[, address])
 
 * type - A device specified by the [UPnP Forum][upnp-dcp].
 * name - The name of the device as it shows up in the network.
+* address - Optional IP address to bind to.
 
 ### device.announce()
 

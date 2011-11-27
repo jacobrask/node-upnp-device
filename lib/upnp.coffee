@@ -6,14 +6,17 @@ log   = new (require 'log')()
 httpServer = require './httpServer'
 helpers    = require './helpers'
 ssdp       = require './ssdp'
+xml        = require './xml'
 
-exports.createDevice = (type, name) ->
+exports.createDevice = (type, name, address) ->
     unless type of devices
         return new Error "UPnP device of type #{type} is not yet implemented."
 
     device = Object.create devices[type],
         name: { value: name, enumerable: true }
         type: { value: type, enumerable: true }
+
+    device.address = address if address?
 
     init device
 
@@ -41,11 +44,16 @@ devices = MediaServer: MediaServer
 init = (device, callback) ->
     async.parallel(
         uuid: (callback) -> helpers.getUuid device.type, device.name, callback
-        http: (callback) -> httpServer.start.call device, callback
+        address: (callback) ->
+            if device.address?
+                callback null, device.address
+            else
+                helpers.getNetworkIP callback
+        port: (callback) -> httpServer.start.call device, callback
         (err, res) ->
             return device.emit 'error', err if err?
             Object.defineProperty device, 'uuid', value: "uuid:#{res.uuid}"
-            device.httpAddress = res.http.address
-            device.httpPort = res.http.port
+            device.address = res.address
+            device.httpPort = res.port
             device.emit 'ready'
     )

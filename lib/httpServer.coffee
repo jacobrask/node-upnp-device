@@ -45,6 +45,16 @@ exports.start = (callback) ->
         # URLs are like `/device|service/action/[serviceType]`.
         [category, action, serviceType] = req.url.split('/')[1..]
 
+        serviceDescriptionHandler = =>
+            # Service descriptions are static XML files.
+            fs.readFile(
+                __dirname + '/services/' + serviceType + '.xml'
+                'utf8'
+                (err, file) ->
+                    return callback new HttpError 500 if err
+                    callback null, file
+            )
+
         serviceControlHandler = =>
             # Service control messages are `POST` requests. Possibly implement
             # support for `M-POST` as well.
@@ -110,21 +120,14 @@ exports.start = (callback) ->
             when 'device'
                 if action isnt 'description'
                     return callback new HttpError 404
-                @_buildDescription (err, desc) ->
+                xml.buildDescription.call @ (err, desc) ->
                     return callback new HttpError 500 if err
                     callback null, desc
 
             when 'service'
                 switch action
                     when 'description'
-                        # Service descriptions are static XML files.
-                        fs.readFile(
-                            __dirname + '/services/' + serviceType + '.xml'
-                            'utf8'
-                            (err, file) ->
-                                return callback new HttpError 500 if err
-                                callback null, file
-                        )
+                        serviceDescriptionHandler()
 
                     when 'control'
                         serviceControlHandler()
@@ -151,15 +154,7 @@ exports.start = (callback) ->
                 callback new HttpError 404
 
 
-    # Get internal IP and pass IP/port to callback. This info is sent out via
-    # SSDP messages.
-    listen = (callback) ->
-        helpers.getNetworkIP (err, address) ->
-            return callback err if err
-            server.listen (err) ->
-                port = server.address().port
-                console.info "Web server listening on http://#{address}:#{port}."
-                callback err, { address: address, port: port }
-
-    listen (err, serverInfo) ->
-        callback err, serverInfo
+    server.listen (err) ->
+        port = server.address().port
+        console.info "Web server listening on port #{port}."
+        callback err, port

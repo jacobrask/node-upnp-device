@@ -20,7 +20,7 @@ makeHeaders = exports.makeHeaders = (customHeaders) ->
         'content-type': 'text/xml; charset="utf-8"'
         ext: ''
         host: "#{ssdp.address}:#{ssdp.port}"
-        location: makeDescriptionUrl(@httpAddress, @httpPort)
+        location: makeDescriptionUrl.call @
         server: makeServerString.call @
         usn: @uuid + (if @uuid is (customHeaders.nt or customHeaders.st) then '' else '::' + (customHeaders.nt or customHeaders.st))
 
@@ -115,23 +115,18 @@ parseHeaders = (msg, callback) ->
         callback null, req
     parser.execute msg, 0, msg.length
 
-
-makeDescriptionUrl = (address, port)->
+# URL generation.
+makeDeviceUrl = (path) ->
     url.format(
-        protocol: 'http:'
-        hostname: address
-        port: port
-        pathname: '/device/description'
+        protocol: 'http'
+        hostname: @address  or @device.address
+        port:     @httpPort or @device.httpPort
+        pathname: path
     )
-
-exports.makeContentUrl = (id) ->
-    url.format(
-        protocol: 'http:'
-        hostname: @device.httpAddress
-        port: @device.httpPort
-        pathname: "/resource/#{id}"
-    )
-
+makeDescriptionUrl = (address, port) ->
+    makeDeviceUrl.call @, '/device/description'
+makeContentUrl = exports.makeContentUrl = (id) ->
+    makeDeviceUrl.call @, "/resource/#{id}"
 
 # Use http module's `STATUS_CODES` static to get error messages.
 class HttpError extends Error
