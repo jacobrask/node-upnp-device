@@ -9,13 +9,13 @@ ssdp       = require './ssdp'
 xml        = require './xml'
 
 exports.createDevice = (type, name, address) ->
+    type = type.toLowerCase()
     unless type of devices
         device = new EventEmitter()
         device.emit 'error', new Error "UPnP device of type #{type} is not yet implemented."
         return device
 
-    device = Object.create devices[type],
-        type: { value: type, enumerable: true }
+    device = Object.create devices[type]
 
     device.name = name or type
     device.address = address if address?
@@ -30,14 +30,15 @@ exports.createDevice = (type, name, address) ->
     device
 
 
-Device = new EventEmitter()
+device = new EventEmitter()
 
-Device.announce = (callback = ->) ->
+device.announce = (callback = ->) ->
     ssdp.start.call @
     do callback
     @
 
-MediaServer = Object.create Device,
+mediaserver = Object.create device,
+    type: { value: 'MediaServer' }
     version: { value: 1 }
     schemaPrefix: { value: 'urn:schemas-upnp-org' }
     schemaVersion: { value: '1.0' }
@@ -45,7 +46,7 @@ MediaServer = Object.create Device,
 
 
 # Need an object to reference a device by its type.
-devices = MediaServer: MediaServer
+devices = mediaserver: mediaserver
 
 # Asynchronous operations to get some device properties.
 init = (device, callback) ->
