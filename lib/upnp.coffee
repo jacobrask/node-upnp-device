@@ -10,20 +10,27 @@ xml        = require './xml'
 
 exports.createDevice = (type, name, address) ->
     unless type of devices
-        return new Error "UPnP device of type #{type} is not yet implemented."
+        device = new EventEmitter()
+        device.emit 'error', new Error "UPnP device of type #{type} is not yet implemented."
+        return device
 
     device = Object.create devices[type],
-        name: { value: name, enumerable: true }
         type: { value: type, enumerable: true }
 
+    device.name = name or type
     device.address = address if address?
 
-    init device
+    init device, (err, res) ->
+        return device.emit 'error', err if err?
+        Object.defineProperty device, 'uuid', value: "uuid:#{res.uuid}"
+        device.address = res.address
+        device.httpPort = res.port
+        device.emit 'ready'
 
     device
 
 
-Device = Object.create new EventEmitter
+Device = new EventEmitter()
 
 Device.announce = (callback = ->) ->
     ssdp.start.call @
@@ -40,7 +47,7 @@ MediaServer = Object.create Device,
 # Need an object to reference a device by its type.
 devices = MediaServer: MediaServer
 
-# Initiate a device.
+# Asynchronous operations to get some device properties.
 init = (device, callback) ->
     async.parallel(
         uuid: (callback) -> helpers.getUuid device.type, device.name, callback
@@ -50,10 +57,5 @@ init = (device, callback) ->
             else
                 helpers.getNetworkIP callback
         port: (callback) -> httpServer.start.call device, callback
-        (err, res) ->
-            return device.emit 'error', err if err?
-            Object.defineProperty device, 'uuid', value: "uuid:#{res.uuid}"
-            device.address = res.address
-            device.httpPort = res.port
-            device.emit 'ready'
+        callback
     )
