@@ -1,8 +1,12 @@
 # Helper functions not large enough to warrant separate modules.
-fs   = require 'fs'
-uuid = require 'node-uuid'
+
+"use strict"
+
 {exec} = require 'child_process'
-log = new (require 'log')()
+fs = require 'fs'
+
+log = new (require 'log')
+uuid = require 'node-uuid'
 
 # We need to get the server's internal network IP to send out in SSDP messages.
 # Only works on Linux and (probably) Mac.
@@ -12,14 +16,9 @@ exports.getNetworkIP = (callback) ->
             filterRE = /\binet\s+([^\s]+)/g
         else
             filterRE = /\binet\b[^:]+:\s*([^\s]+)/g
+        isLocal = (address) -> /^(127\.0\.0\.1|::1|fe80(:1)?::1(%.*)?)$/i.test address
         matches = stdout.match(filterRE)
-
-        match = matches
-            .map((match) -> match.replace filterRE, '$1')
-            .filter(
-                (match) ->
-                    !/^(127\.0\.0\.1|::1|fe80(:1)?::1(%.*)?)$/i.test match
-            )[0]
+        match = (match.replace(filterRE, '$1') for match in matches when !isLocal match)
         log.debug "`ifconfig` returned '#{matches}', after filtering out localhost IPs, '#{match}' will be used."
         callback err, match
 
