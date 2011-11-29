@@ -1,5 +1,3 @@
-# Helper functions not large enough to warrant separate modules.
-
 "use strict"
 
 {exec} = require 'child_process'

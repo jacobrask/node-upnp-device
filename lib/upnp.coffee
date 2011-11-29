@@ -1,17 +1,21 @@
 # UPnP Devices.
 
-{EventEmitter} = require 'events'
-async      = require 'async'
-log   = new (require 'log')()
+"use strict"
+
+async = require 'async'
+eventEmitter = require('events').EventEmitter.prototype
+log = new (require 'log')
+require './utils'
+
 httpServer = require './httpServer'
-helpers    = require './helpers'
-ssdp       = require './ssdp'
-xml        = require './xml'
+helpers = require './helpers'
+ssdp = require './ssdp'
+
 
 exports.createDevice = (type, name, address) ->
     type = type.toLowerCase()
     unless type of devices
-        device = new EventEmitter()
+        device = Object.extend {}, eventEmitter
         device.emit 'error', new Error "UPnP device of type #{type} is not yet implemented."
         return device
 
@@ -29,21 +33,29 @@ exports.createDevice = (type, name, address) ->
 
     device
 
+device = Object.extend {}, eventEmitter
 
-device = new EventEmitter()
+Object.defineProperties device,
+    upnpVersion: { value: '1.0', enumerable: yes }
 
-device.announce = (callback = ->) ->
+device.announce = (callback) ->
     ssdp.start.call @
-    do callback
+    do callback if callback?
     @
 
-mediaserver = Object.create device,
-    type: { value: 'MediaServer' }
-    version: { value: 1 }
-    schemaPrefix: { value: 'urn:schemas-upnp-org' }
-    schemaVersion: { value: '1.0' }
-    upnpVersion: { value: '1.0' }
+device.services = {}
 
+mediaserver = Object.create device,
+    type: { value: 'MediaServer', enumerable: yes }
+    version: { value: 1, enumerable: yes }
+    schemaPrefix: { value: 'urn:schemas-upnp-org', enumerable: yes }
+    schemaVersion: { value: '1.0', enumerable: yes }
+
+ContentDirectory = require './services/ContentDirectory'
+ConnectionManager = require './services/ConnectionManager'
+
+mediaserver.services.ContentDirectory  = Object.create new ContentDirectory(mediaserver), device: { value: mediaserver }
+mediaserver.services.ConnectionManager = Object.create new ConnectionManager(mediaserver), device: { value: mediaserver }
 
 # Need an object to reference a device by its type.
 devices = mediaserver: mediaserver
@@ -58,5 +70,4 @@ init = (device, callback) ->
             else
                 helpers.getNetworkIP callback
         port: (callback) -> httpServer.start.call device, callback
-        callback
-    )
+        callback)
