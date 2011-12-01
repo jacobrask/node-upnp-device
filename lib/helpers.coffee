@@ -26,10 +26,10 @@ do ->
     # UUID's are stored in a JSON file in upnp-device's root folder.
     uuidFile = "#{__dirname}/../upnp-uuid"
 
-    readFile = (callback) -> fs.readFile uuidFile, 'utf8', callback
-    writeFile = (data) -> fs.writeFile uuidFile, JSON.stringify data
+    readUuidFile = (callback) -> fs.readFile uuidFile, 'utf8', callback
+    writeUuidFile = (data) -> fs.writeFile uuidFile, JSON.stringify data
 
-    handleUuidData = exports.handleUuidData = (file, type, name, callback) ->
+    parseUuidFile = exports.parseUuidFile = (file, type, name, callback) ->
         data = JSON.parse(file or "{}")
         unless data[type]?[name]
             callback new Error "#{type} device #{name} not found in UUID file."
@@ -37,11 +37,12 @@ do ->
             callback null, data[type][name]
 
     exports.getUuid = (type, name, callback) ->
-        readFile (err, file) ->
+        readUuidFile (err, file) ->
             log.notice err.message if err?
-            handleUuidData file, type, name, (err, uuid) ->
-                log.debug err.message if err?
-                ((data={})[type]={})[name] = uuid = makeUuid()
-                writeFile(data)
+            parseUuidFile file, type, name, (err, uuid) ->
+                if err?
+                    log.debug err.message
+                    ((data={})[type]={})[name] = uuid = makeUuid()
+                    writeUuidFile data
                 # Call back with UUID even if (and before) read/write fails.
                 callback null, uuid
