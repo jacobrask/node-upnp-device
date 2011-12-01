@@ -7,18 +7,26 @@ log = new (require 'log')
 makeUuid = require 'node-uuid'
 
 # We need to get the server's internal network IP to send out in SSDP messages.
-# Only works on Linux and (probably) Mac.
-exports.getNetworkIP = (callback) ->
-    exec 'ifconfig', (err, stdout, sterr) ->
-        if process.platform is 'darwin'
-            filterRE = /\binet\s+([^\s]+)/g
-        else
-            filterRE = /\binet\b[^:]+:\s*([^\s]+)/g
-        isLocal = (address) -> /^(127\.0\.0\.1|::1|fe80(:1)?::1(%.*)?)$/i.test address
-        matches = stdout.match(filterRE)
-        match = (match.replace(filterRE, '$1') for match in matches when !isLocal match)
-        log.debug "`ifconfig` returned '#{matches}', after filtering out localhost IPs, '#{match}' will be used."
-        callback err, match
+# Only works on Linux and Mac.
+do ->
+    ipErr = new Error "IP address could not be retrieved. Please supply an address when starting the application."
+    parseIP = exports.parseIP = (stdout, callback) ->
+        switch process.platform
+            when 'darwin'
+                filterRE = /\binet\s+([^\s]+)/g
+            when 'linux'
+                filterRE = /\binet\b[^:]+:\s*([^\s]+)/g
+            else
+                return callback ipErr
+        isLocal = (address) -> /(127\.0\.0\.1|::1|fe80(:1)?::1(%.*)?)$/i.test address
+        matches = stdout.match(filterRE) or ''
+        match = (match.replace(filterRE, '$1') for match in matches when !isLocal match)[0]
+        callback (if !match? then ipErr else null), match
+
+    exports.getNetworkIP = (callback) ->
+        exec 'ifconfig', (err, stdout) ->
+            return callback ipErr if err?
+            parseIP stdout, callback
 
 # Attempt UUID persistance of devices across restarts.
 # Returns a fresh UUID if no existing UUID was found.
