@@ -1,18 +1,15 @@
 "use strict"
 
-assert = require 'assert'
-
 {parseUuidFile} = require '../lib/helpers'
 
-type = "baz"
-name = "fizz"
-uuid = "uuid:7baea6c0-1c15-11e1-bddb-0800200c9a66"
+exports["Get UUID from JSON data."] = (test) ->
+    ((obj={})[type = "buzz"]={})[name = "fizz"] = uuid = "uuid:7baea6c0-1c15-11e1-bddb-0800200c9a66"
+    parseUuidFile JSON.stringify(obj), type, name, (err, parsedUuid) ->
+        test.ifError err
+        test.equal uuid, parsedUuid
+        test.done()
 
-((obj={})[type]={})[name] = uuid
-
-parseUuidFile JSON.stringify(obj), type, name, (err, parsedUuid) ->
-    assert.ifError err
-    assert.equal uuid, parsedUuid
-
-parseUuidFile JSON.stringify(obj), "Not Name", "Not Type", (err, parsedUuid) ->
-    assert.ok err?, "Expected to return error."
+exports["Return error when UUID isn't found."] = (test) ->
+    parseUuidFile '{ "foo": "bar" }', 'Not Name', 'Not Type', (err, parsedUuid) ->
+        test.ok err?, "Expected to return error."
+        test.done()
