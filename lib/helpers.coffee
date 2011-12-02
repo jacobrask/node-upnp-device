@@ -29,28 +29,13 @@ do ->
             parseIP stdout, callback
 
 # Attempt UUID persistance of devices across restarts.
-# Returns a fresh UUID if no existing UUID was found.
-do ->
-    # UUID's are stored in a JSON file in upnp-device's root folder.
+exports.getUuid = (type, name, callback) ->
     uuidFile = "#{__dirname}/../upnp-uuid"
-
-    readUuidFile = (callback) -> fs.readFile uuidFile, 'utf8', callback
-    writeUuidFile = (data) -> fs.writeFile uuidFile, JSON.stringify data
-
-    parseUuidFile = exports.parseUuidFile = (file, type, name, callback) ->
-        data = JSON.parse(file or "{}")
-        unless data[type]?[name]
-            callback new Error "#{type} device #{name} not found in UUID file."
-        else
-            callback null, data[type][name]
-
-    exports.getUuid = (type, name, callback) ->
-        readUuidFile (err, file) ->
-            log.notice err.message if err?
-            parseUuidFile file, type, name, (err, uuid) ->
-                if err?
-                    log.debug err.message
-                    ((data={})[type]={})[name] = uuid = makeUuid()
-                    writeUuidFile data
-                # Call back with UUID even if (and before) read/write fails.
-                callback null, uuid
+    fs.readFile uuidFile, 'utf8', (err, file) ->
+        log.notice err.message if err?
+        uuid = JSON.parse(json or "{}")[type]?[name]
+        unless uuid?
+            ((data={})[type]={})[name] = uuid = makeUuid()
+            fs.writeFile uuidFile, JSON.stringify data
+        # Always call back with UUID, existing or new.
+        callback null, uuid
