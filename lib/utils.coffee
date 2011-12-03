@@ -22,3 +22,14 @@ unless typeof Object.toArray is 'function'
             arr
         configurable: yes
         writable: yes
+
+# Parse JSON string to object, returning an empty object on invalid JSON.
+unless typeof String::toObject is 'function'
+    Object.defineProperty String::, 'toObject',
+        value: ->
+            try
+                JSON.parse @
+            catch e
+                { }
+        configurable: yes
+        writable: yes

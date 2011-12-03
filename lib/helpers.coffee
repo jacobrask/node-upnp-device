@@ -33,7 +33,7 @@ exports.getUuid = (type, name, callback) ->
     uuidFile = "#{__dirname}/../upnp-uuid"
     fs.readFile uuidFile, 'utf8', (err, file) ->
         log.notice err.message if err?
-        uuid = JSON.parse(file or "{}")[type]?[name]
+        uuid = file.toObject()[type]?[name]
         unless uuid?
             ((data={})[type]={})[name] = uuid = makeUuid()
             fs.writeFile uuidFile, JSON.stringify data
