@@ -1,11 +1,9 @@
 "use strict"
 
-{exec} = require 'child_process'
-fs = require 'fs'
-
 log = new (require 'log')
-makeUuid = require 'node-uuid'
+utils = require './utils'
 
+{exec} = require 'child_process'
 # We need to get the server's internal network IP to send out in SSDP messages.
 # Only works on Linux and Mac.
 do ->
@@ -23,17 +21,20 @@ do ->
 
     exports.getNetworkIP = (callback) ->
         exec 'ifconfig', (err, stdout) ->
+            log.notice err.message if err?
             ip = parseIP stdout
             callback(
                 if ip? then null else new Error "IP address could not be retrieved."
                 ip)
 
+fs = require 'fs'
+makeUuid = require 'node-uuid'
 # Attempt UUID persistance of devices across restarts.
 exports.getUuid = (type, name, callback) ->
     uuidFile = "#{__dirname}/../upnp-uuid"
     fs.readFile uuidFile, 'utf8', (err, file) ->
         log.notice err.message if err?
-        uuid = file.toObject()[type]?[name]
+        uuid = utils.parseJSON(file)[type]?[name]
         unless uuid?
             ((data={})[type]={})[name] = uuid = makeUuid()
             fs.writeFile uuidFile, JSON.stringify data

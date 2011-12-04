@@ -6,6 +6,7 @@ class exports.ContextError extends Error
         @message = message or "Invoked function in bad `this` context."
         Error.captureStackTrace @, ContextError
 
+http = require 'http'
 # Use http module's `STATUS_CODES` static to get error messages.
 class exports.HttpError extends Error
     constructor: (@code) ->
