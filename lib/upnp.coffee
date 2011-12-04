@@ -10,64 +10,77 @@ require './utils'
 httpServer = require './httpServer'
 helpers = require './helpers'
 ssdp = require './ssdp'
+utils = require './utils'
 
+services =
+    ContentDirectory: require './services/ContentDirectory'
+    ConnectionManager: require './services/ConnectionManager'
 
-exports.createDevice = (type, name, address) ->
-    type = type.toLowerCase()
-    unless type of devices
-        device = Object.extend {}, eventEmitter
+exports.createDevice = (reqType, name, address) ->
+    type = reqType.toLowerCase()
+
+    device = newDevice(name or type, type)
+    unless device.type?
         device.emit 'error', new Error "UPnP device of type #{type} is not yet implemented."
         return device
 
-    device = Object.create devices[type]
-
-    device.name = name or type
     device.address = address if address?
 
-    init device, (err, res) ->
-        return device.emit 'error', err if err?
-        Object.defineProperty device, 'uuid', value: "uuid:#{res.uuid}"
-        device.address = res.address
-        device.httpPort = res.port
-        device.emit 'ready'
+    device
+        .addServices()
+        .init (err, res) ->
+            return device.emit 'error', err if err?
+            Object.defineProperty device, 'uuid', value: "uuid:#{res.uuid}"
+            device.address = res.address
+            device.httpPort = res.port
+            device.emit 'ready'
 
     device
 
-device = Object.extend {}, eventEmitter
+newDevice = (name, type) ->
 
-Object.defineProperties device,
-    upnpVersion: { value: '1.0', enumerable: yes }
+    init = (callback) ->
+        # Asynchronous operations to get some device properties.
+        async.parallel(
+            uuid: (callback) => helpers.getUuid @type, @name, callback
+            address: (callback) =>
+                if @address?
+                    callback null, @address
+                else
+                    helpers.getNetworkIP callback
+            port: (callback) => httpServer.start.call @, callback
+            callback)
+        @
 
-device.announce = (callback) ->
-    ssdp.start.call @
-    do callback if callback?
-    @
+    announce = (callback) ->
+        ssdp.start.call @
+        do callback if callback?
+        @
 
-device.services = {}
+    addServices = ->
+        @services = {}
+        for st in @serviceTypes
+            @services[st] = Object.create services[st], device: { value: @ }
+        @
 
-mediaserver = Object.create device,
-    type: { value: 'MediaServer', enumerable: yes }
-    version: { value: 1, enumerable: yes }
-    schemaPrefix: { value: 'urn:schemas-upnp-org', enumerable: yes }
-    schemaVersion: { value: '1.0', enumerable: yes }
+    baseProps =
+        name: { value: name, enumerable: yes }
+        announce: { value: announce, enumerable: yes }
+        upnpVersion: { value: '1.0' }
+        addServices: { value: addServices }
+        init: { value: init }
 
-ContentDirectory = require './services/ContentDirectory'
-ConnectionManager = require './services/ConnectionManager'
+    typeProps =
+        mediaserver:
+            type: { value: 'MediaServer', enumerable: yes }
+            version: { value: 1, enumerable: yes }
+            schemaPrefix: { value: 'urn:schemas-upnp-org' }
+            schemaVersion: { value: '1.0' }
+            serviceTypes: { value: [ 'ConnectionManager', 'ContentDirectory' ] }
 
-mediaserver.services.ContentDirectory  = Object.create new ContentDirectory(mediaserver), device: { value: mediaserver }
-mediaserver.services.ConnectionManager = Object.create new ConnectionManager(mediaserver), device: { value: mediaserver }
-
-# Need an object to reference a device by its type.
-devices = mediaserver: mediaserver
-
-# Asynchronous operations to get some device properties.
-init = (device, callback) ->
-    async.parallel(
-        uuid: (callback) -> helpers.getUuid device.type, device.name, callback
-        address: (callback) ->
-            if device.address?
-                callback null, device.address
-            else
-                helpers.getNetworkIP callback
-        port: (callback) -> httpServer.start.call device, callback
-        callback)
+    Object.create(eventEmitter
+        if typeProps[type]?
+            utils.extend baseProps, typeProps[type]
+        else
+            baseProps
+    )
