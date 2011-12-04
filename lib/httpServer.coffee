@@ -105,9 +105,7 @@ exports.start = (callback) ->
             when 'device'
                 if action isnt 'description'
                     return callback new HttpError 404
-                xml.buildDescription.call @ (err, desc) ->
-                    return callback new HttpError 500 if err
-                    callback null, desc
+                callback null, xml.buildDescription.call @
 
             when 'service'
                 switch action

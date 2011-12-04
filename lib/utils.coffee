@@ -16,9 +16,9 @@ extend = exports.extend = (obj, ext) ->
 # Make each key/value pair in object into separate objects in `arr`.
 objectToArray = exports.objectToArray = (obj, arr = []) ->
     throw new TypeError("Not an object.") unless isObject obj
-    Object.keys(@).map (key) ->
+    Object.keys(obj).map (key) ->
         o = {}
-        o[key] = @[key]
+        o[key] = obj[key]
         arr.push o
     arr
 
