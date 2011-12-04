@@ -3,45 +3,31 @@
 "use strict"
 
 async = require 'async'
-eventEmitter = require('events').EventEmitter.prototype
-log = new (require 'log')
-require './utils'
+{EventEmitter} = require 'events'
 
 httpServer = require './httpServer'
 helpers = require './helpers'
 ssdp = require './ssdp'
-utils = require './utils'
-
-services =
-    ContentDirectory: require './services/ContentDirectory'
-    ConnectionManager: require './services/ConnectionManager'
 
 exports.createDevice = (reqType, name, address) ->
     type = reqType.toLowerCase()
-
-    device = newDevice(name or type, type)
-    unless device.type?
+    unless type of devices
+        device = new EventEmitter
         device.emit 'error', new Error "UPnP device of type #{type} is not yet implemented."
         return device
+    new devices[type](name, address)
 
-    device.address = address if address?
+class Device extends EventEmitter
 
-    device
-        .addServices()
-        .init (err, res) ->
-            return device.emit 'error', err if err?
-            Object.defineProperty device, 'uuid', value: "uuid:#{res.uuid}"
-            device.address = res.address
-            device.httpPort = res.port
-            device.emit 'ready'
+    constructor: (@name, @address) ->
+        @schemaPrefix = 'urn:schemas-upnp-org'
+        @schemaVersion = '1.0'
+        @upnpVersion = '1.0'
+        @init()
 
-    device
-
-newDevice = (name, type) ->
-
-    init = (callback) ->
-        # Asynchronous operations to get some device properties.
-        async.parallel(
+    # Asynchronous operations to get some device properties.
+    init: (callback) ->
+        async.parallel
             uuid: (callback) => helpers.getUuid @type, @name, callback
             address: (callback) =>
                 if @address?
@@ -49,38 +35,30 @@ newDevice = (name, type) ->
                 else
                     helpers.getNetworkIP callback
             port: (callback) => httpServer.start.call @, callback
-            callback)
+            (err, res) =>
+                return device.emit 'error', err if err?
+                @uuid = "uuid:#{res.uuid}"
+                @address = res.address
+                @httpPort = res.port
+                @emit 'ready'
         @
 
-    announce = (callback) ->
+    announce: (callback) ->
         ssdp.start.call @
         do callback if callback?
         @
 
-    addServices = ->
+services =
+    ConnectionManager: require './services/ConnectionManager'
+    ContentDirectory: require './services/ContentDirectory'
+
+class MediaServer extends Device
+
+    constructor: ->
+        super
+        @type = 'MediaServer'
+        @version = 1
         @services = {}
-        for st in @serviceTypes
-            @services[st] = Object.create services[st], device: { value: @ }
-        @
+        new services[type](@) for type in ['ConnectionManager','ContentDirectory']
 
-    baseProps =
-        name: { value: name, enumerable: yes }
-        announce: { value: announce, enumerable: yes }
-        upnpVersion: { value: '1.0' }
-        addServices: { value: addServices }
-        init: { value: init }
-
-    typeProps =
-        mediaserver:
-            type: { value: 'MediaServer', enumerable: yes }
-            version: { value: 1, enumerable: yes }
-            schemaPrefix: { value: 'urn:schemas-upnp-org' }
-            schemaVersion: { value: '1.0' }
-            serviceTypes: { value: [ 'ConnectionManager', 'ContentDirectory' ] }
-
-    Object.create(eventEmitter
-        if typeProps[type]?
-            utils.extend baseProps, typeProps[type]
-        else
-            baseProps
-    )
+devices = mediaserver: MediaServer
