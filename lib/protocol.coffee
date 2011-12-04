@@ -4,13 +4,11 @@
 # [1]: http://upnp.org/index.php/sdcps-and-certification/standards/sdcps/
 
 # Make namespace string.
-exports.makeNameSpace = (category) ->
-    version = @schemaVersion or @device?.schemaVersion
-    prefix  = @schemaPrefix  or @device?.schemaPrefix
+exports.makeNS = (category, prefix, version, suffix) ->
     prefix + ':' + [
         category
         version.split('.')[0]
-        version.split('.')[1] ].join '-'
+        version.split('.')[1] ].join('-') + suffix
 
 # Make Device/Service type string for SSDP messages
 # and Service/Device descriptions.

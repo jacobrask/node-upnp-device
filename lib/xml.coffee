@@ -4,7 +4,7 @@
 os  = require 'os'
 xml = require 'xml'
 
-helpers  = require './helpers'
+{ContextError} = require './errors'
 httpu    = require './httpu'
 protocol = require './protocol'
 utils    = require './utils'
@@ -12,7 +12,7 @@ utils    = require './utils'
 xmlDecl = '<?xml version="1.0" encoding="utf-8"?>'
 
 do ->
-    # Build `specVersion` element..
+    # Build `specVersion` element.
     specVersion = (v) -> major: v.split('.')[0], minor: v.split('.')[1]
 
     # Build an array of `service` elements.
@@ -22,6 +22,7 @@ do ->
 
     # Build `device` element.
     buildDevice = ->
+        throw new ContextError if @buildDescription? or @ is global
         deviceType: protocol.makeDeviceType.call @
         friendlyName: "#{@name} @ #{os.hostname()}".substr(0, 64)
         manufacturer: 'UPnP Device for Node.js'
@@ -29,8 +30,9 @@ do ->
         UDN: @uuid
         serviceList: buildServiceList @services
 
-    # Build an array of elements contained in a `service` element.
+    # Build `service` element.
     buildService = ->
+        throw new ContextError if @ is global
         serviceType: protocol.makeServiceType.call @
         serviceId: 'urn:upnp-org:serviceId:' + @type
         SCPDURL: '/service/description/' + @type
@@ -40,12 +42,11 @@ do ->
     # Build device description XML document. `@` is bound to a Device.
     exports.buildDescription = ->
         xmlDecl + xml [
-            root: [
-                _attr: { xmlns: protocol.makeNameSpace.call @, 'device' }
-                { specVersion: utils.objectToArray specVersion @upnpVersion }
-                { device: utils.objectToArray buildDevice.call @ }
-            ]
-        ]
+            root: utils.objectToArray(
+                _attr: { xmlns: protocol.makeNS 'device', @schemaPrefix, @schemaVersion }
+                specVersion: utils.objectToArray specVersion @upnpVersion
+                device: utils.objectToArray buildDevice.call @
+            ) ]
 
 
 # Build a SOAP response XML document. `@` is bound to a Service.
@@ -56,7 +57,7 @@ exports.buildSoapResponse = (action, args) ->
     body[actionKey] = [ _attr: { 'xmlns:u': protocol.makeServiceType.call @ } ]
     # Add action arguments. First turn each key/value pair into separate
     # objects, to make them separate XML elements.
-    body[actionKey] = helpers.objToArr(args, body[actionKey])
+    body[actionKey] = utils.objectToArray(args, body[actionKey])
 
     callback null, xmlDecl + xml [
         's:Envelope': [
@@ -82,7 +83,7 @@ exports.buildSoapError = (error, callback) ->
                     { faultstring: 'UPnPError' }
                     { detail: [
                         'UPnPError': [
-                            _attr: { 'xmlns:e': protocol.makeNameSpace.call(@, 'control') }
+                            _attr: { 'xmlns:e': protocol.makeNS 'control', @device.schemaPrefix, @device.schemaVersion }
                             { errorCode: error.code }
                             { errorDescription: error.message }
                         ]
@@ -98,9 +99,8 @@ exports.buildEvent = (vars, callback) ->
     resp = '<?xml version="1.0" encoding="utf-8"?>'
     resp += xml [
         'e:propertyset': [
-            _attr:
-                'xmlns:e': protocol.makeNameSpace.call(@, 'event')
-            { 'e:property': helpers.objToArr(vars) }
+            _attr: { 'xmlns:e': protocol.makeNS 'event', @device.schemaPrefix, @device.schemaVersion }
+            { 'e:property': utils.objecttoArray vars }
         ]
     ]
     callback null, resp
@@ -135,9 +135,9 @@ exports.buildDidl = (data) ->
     body['DIDL-Lite'] = []
     body['DIDL-Lite'].push(
         _attr:
-            'xmlns': protocol.makeNameSpace.call(@, 'metadata') + '/DIDL-Lite/'
+            'xmlns': protocol.makeNS 'metadata', @device.schemaPrefix, @device.schemaversion, '/DIDL-Lite/'
             'xmlns:dc': 'http://purl.org/dc/elements/1.1/'
-            'xmlns:upnp': protocol.makeNameSpace.call(@, 'metadata') + '/upnp/'
+            'xmlns:upnp': protocol.makeNS 'metadata', @device.schemaPrefix, @device.schemaVersion, '/upnp/'
     )
     for object in data
         type = /object\.(\w+)/.exec(object.class)[1]
