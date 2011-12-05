@@ -1,9 +1,11 @@
 # Implements UPnP Device Architecture version 1.0
 # http://upnp.org/sdcps-and-certification/standards/device-architecture-documents/
 
+"use strict"
+
 {EventEmitter} = require 'events'
 makeUuid = require 'node-uuid'
-xml2js   = require 'xml2js'
+{Parser:XmlParser} = require 'xml2js'
 
 httpu    = require '../httpu'
 protocol = require '../protocol'
@@ -16,34 +18,28 @@ class Service extends EventEmitter
 
     # Control action. Most actions build a SOAP response and calls back.
     action: (action, data, callback) ->
-        xmlParser = new xml2js.Parser()
-        xmlParser.parseString data, (err, data) =>
-            options = data['s:Body']["u:#{action}"]
-            @[action] options, callback
+        (new XmlParser).parseString data, (err, data) =>
+            @[action] data['s:Body']["u:#{action}"], callback
 
     # Event subscriptions.
     subscribe: (cbUrls, reqTimeout, callback) ->
         uuid = "uuid:#{makeUuid()}"
-        @subscriptions ?= {}
-        @subscriptions[uuid] = new Subscription(
-            uuid
-            cbUrls
-            @
-        )
-        realTimeout = @subscriptions[uuid].selfDestruct reqTimeout
-        callback null, sid: uuid, timeout: "Second-#{realTimeout}"
+        (@subs?={})[uuid] = new Subscription uuid, cbUrls, @
+        timeout = @subs[uuid].selfDestruct reqTimeout
+        log.debug "Added new subscription for #{@type} with #{uuid}, expiring in #{timeout}s."
+        callback null, sid: uuid, timeout: "Second-#{timeout}"
 
     renew: (uuid, reqTimeout, callback) ->
-        unless @subscriptions[uuid]?
-            console.info "Got subscription renewal request but could not find device #{sid}."
+        unless @subs[uuid]?
+            log.warning "Got subscription renewal request but could not find device #{sid}."
             return callback new HttpError 412
-        console.info "Renewing subscription #{uuid}."
-        realTimeout = @subscriptions[uuid].selfDestruct reqTimeout
-        callback null, sid: uuid, timeout: "Second-#{realTimeout}"
+        timeout = @subs[uuid].selfDestruct reqTimeout
+        log.debug "Renewing subscription #{uuid}, expiring in #{timeout}s."
+        callback null, sid: uuid, timeout: "Second-#{timeout}"
 
     unsubscribe: (uuid) ->
         console.info "Deleting subscription #{uuid}."
-        delete @subscriptions[uuid]
+        delete @subs[uuid] if @subs[uuid]?
 
     # For optional actions not (yet) implemented.
     optionalAction: (options, callback) ->
@@ -51,18 +47,11 @@ class Service extends EventEmitter
 
     # Several Service actions only serve to return a State Variable.
     getStateVar: (varName, elName, callback) ->
-        o = {}
-        o[elName] = @stateVars[varName].value
-        @buildSoapResponse(
-            "Get#{varName}"
-            o
-            callback
-        )
+        (el={})[elName] = @stateVars[varName].value
+        @buildSoapResponse "Get#{varName}", el, callback
 
     # Notify all subscribers of updated state variables.
-    notify: ->
-        for uuid, sub of @subscriptions
-            @subscriptions[uuid].notify()
+    notify = -> do @subs[uuid].notify for uuid of @subs
 
     buildSoapResponse: xml.buildSoapResponse
     buildSoapError: xml.buildSoapError
@@ -75,7 +64,6 @@ class Subscription
         @eventKey = 0
         @minTimeout = 1800
         @callbackUrls = urls.split(',')
-        console.info "Added new subscription for #{@service.type} with #{@uuid}."
         @notify()
 
     selfDestruct: (timeout) ->
@@ -86,7 +74,6 @@ class Subscription
             time = @minTimeout
         else
             time = parseInt(time)
-        console.log "Subscription #{@uuid} expiring in #{time}s."
         @destructionTimer = setTimeout(
             => @service.unsubscribe(@uuid)
             time * 1000)
@@ -101,13 +88,7 @@ class Subscription
         for key, val of @service.stateVars when val.evented
             eventedVars[key] = val.value
         @service.buildEvent eventedVars, (err, resp) =>
-            httpu.postEvent.call(
-                @service.device
-                @callbackUrls
-                @uuid
-                @eventKey
-                resp
-            )
+            httpu.postEvent.call @service.device, @callbackUrls, @uuid, @eventKey, resp
         @eventKey++
 
 module.exports = Service

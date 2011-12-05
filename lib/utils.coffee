@@ -26,6 +26,6 @@ objectToArray = exports.objectToArray = (obj, arr = []) ->
 parseJSON = exports.parseJSON = (str) ->
     throw new TypeError("Not a string.") unless isString str
     try
-        JSON.parse @
+        JSON.parse str
     catch e
         { }

@@ -127,9 +127,3 @@ makeDescriptionUrl = (address, port) ->
     makeDeviceUrl.call @, '/device/description'
 makeContentUrl = exports.makeContentUrl = (id) ->
     makeDeviceUrl.call @, "/resource/#{id}"
-
-# Use http module's `STATUS_CODES` static to get error messages.
-class HttpError extends Error
-    constructor: (@code) ->
-        @message = http.STATUS_CODES[@code]
-exports.HttpError = HttpError

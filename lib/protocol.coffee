@@ -4,7 +4,7 @@
 # [1]: http://upnp.org/index.php/sdcps-and-certification/standards/sdcps/
 
 # Make namespace string.
-exports.makeNS = (category, prefix, version, suffix) ->
+exports.makeNS = (category, prefix, version, suffix = '') ->
     prefix + ':' + [
         category
         version.split('.')[0]

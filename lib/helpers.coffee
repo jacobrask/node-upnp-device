@@ -36,6 +36,7 @@ exports.getUuid = (type, name, callback) ->
         log.notice err.message if err?
         uuid = utils.parseJSON(file)[type]?[name]
         unless uuid?
+            log.debug "Returning new uuid #{uuid}"
             ((data={})[type]={})[name] = uuid = makeUuid()
             fs.writeFile uuidFile, JSON.stringify data
         # Always call back with UUID, existing or new.

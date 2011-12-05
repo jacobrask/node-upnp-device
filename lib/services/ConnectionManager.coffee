@@ -19,10 +19,12 @@ class ConnectionManager extends Service
                 value: 0
                 evented: true
 
-        @device.services.ContentDirectory.on 'newContentType', =>
-            # Update protocol info and notify subscribers.
-            @stateVars.SourceProtocolInfo.value = @getProtocols()
-            @notify()
+        @device.on 'newService', (type) =>
+            if type is 'ContentDirectory'
+                @device.services.ContentDirectory.on 'newContentType', =>
+                    # Update protocol info and notify subscribers.
+                    @stateVars.SourceProtocolInfo.value = @getProtocols()
+                    @notify()
 
     # Build Protocol Info string, `protocol:network:contenttype:additional`.
     getProtocols: ->
