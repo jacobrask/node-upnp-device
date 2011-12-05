@@ -26,22 +26,38 @@ class ConnectionManager extends Service
                     @stateVars.SourceProtocolInfo.value = @getProtocols()
                     @notify()
 
+    actionHandler: (action, options, callback) ->
+        # Optional actions not (yet) implemented.
+        optionalActions = [ 'PrepareForConnection', 'ConnectionComplete' ]
+        return @optionalAction callback if action in optionalActions
+
+        # State variable actions and associated XML element names.
+        stateActions =
+            GetCurrentConnectionIDs: 'ConnectionIDs'
+        return @getStateVar action, stateActions[action], callback if action of stateActions
+
+        switch action
+            when 'GetProtocolInfo'
+                @makeProtocolInfo()
+            when 'GetCurrentConnectionInfo'
+                @makeConnectionInfo()
+            else
+                @buildSoapError new SoapError(401), callback
+
+
     # Build Protocol Info string, `protocol:network:contenttype:additional`.
     getProtocols: ->
         ("http-get:*:#{type}:*" for type in @device.services.ContentDirectory.contentTypes).join(',')
 
-    GetProtocolInfo: (options, callback) ->
-        @buildSoapResponse(
-            'GetProtocolInfo'
+    makeProtocolInfo: (options, callback) ->
+        @buildSoapResponse 'GetProtocolInfo',
             Source: @stateVars.SourceProtocolInfo.value, Sink: ''
             callback
-        )
 
-    GetCurrentConnectionInfo: (options, callback) ->
+    makeConnectionInfo: (options, callback) ->
         # `PrepareForConnection` is not implemented, so only `ConnectionID`
         # available is `0`. The following are defaults from specification.
-        @buildSoapResponse(
-            'GetCurrentConnectionInfo'
+        @buildSoapResponse 'GetCurrentConnectionInfo',
             RcsID: -1
             AVTransportID: -1
             ProtocolInfo: @protocols.join(',')
@@ -50,12 +66,5 @@ class ConnectionManager extends Service
             Direction: 'Output'
             Status: 'OK'
             callback
-        )
 
-    GetCurrentConnectionIDs: (options, callback) ->
-        @getStateVar 'CurrentConnectionIDs', 'ConnectionIDs', callback
-
-    PrepareForConnection: @optionalAction
-    ConnectionComplete: @optionalAction
-    
 module.exports = ConnectionManager

@@ -19,7 +19,7 @@ class Service extends EventEmitter
     # Control action. Most actions build a SOAP response and calls back.
     action: (action, data, callback) ->
         (new XmlParser).parseString data, (err, data) =>
-            @[action] data['s:Body']["u:#{action}"], callback
+            @actionHandler action, data['s:Body']["u:#{action}"], callback
 
     # Event subscriptions.
     subscribe: (cbUrls, reqTimeout, callback) ->
@@ -42,19 +42,24 @@ class Service extends EventEmitter
         delete @subs[uuid] if @subs[uuid]?
 
     # For optional actions not (yet) implemented.
-    optionalAction: (options, callback) ->
-        @buildSoapError(new SoapError(602), callback)
+    optionalAction: (callback) -> @buildSoapError new SoapError(602), callback
 
-    # Several Service actions only serve to return a State Variable.
-    getStateVar: (varName, elName, callback) ->
+    # Service actions that only return a State Variable.
+    getStateVar: (action, elName, callback) ->
+        # Actions start with 'Get' followed by variable name.
+        varName = /^(Get)?(\w+)$/.exec(action)[2]
+        unless varName of @stateVars
+            return @buildSoapError new SoapError(404), callback
         (el={})[elName] = @stateVars[varName].value
-        @buildSoapResponse "Get#{varName}", el, callback
+        @buildSoapResponse action, el, callback
 
     # Notify all subscribers of updated state variables.
     notify = -> do @subs[uuid].notify for uuid of @subs
 
     buildSoapResponse: xml.buildSoapResponse
-    buildSoapError: xml.buildSoapError
+    buildSoapError: (err, callback) ->
+        log.notice "Browse action caused #{err.message}."
+        xml.buildSoapError err, callback
     buildEvent: xml.buildEvent
     buildDidl: xml.buildDidl
 

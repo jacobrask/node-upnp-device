@@ -2,6 +2,8 @@
 #
 # [1]: http://upnp.org/specs/av/av1/
 
+redis = require 'redis'
+
 Service = require './Service'
 {SoapError} = require '../xml'
 
@@ -26,12 +28,49 @@ class ContentDirectory extends Service
                 value: '*'
                 evented: false
 
+        @startDb()
+
+    actionHandler: (action, options, callback) ->
+        # Optional actions not (yet) implemented.
+        optionalActions = [ 'Search', 'CreateObject', 'DestroyObject',
+                            'UpdateObject', 'ImportResource', 'ExportResource',
+                            'StopTransferResource', 'GetTransferProgress' ]
+        return @optionalAction callback if action in optionalActions
+
+        # State variable actions and associated XML element names.
+        stateActions =
+            GetSearchCapabilities: 'SearchCaps'
+            GetSortCapabilities: 'SortCaps'
+            GetSystemUpdateID: 'Id'
+        return @getStateVar action, stateActions[action], callback if action of stateActions
+
+        switch action
+            when 'Browse'
+                browseCallback = (err, resp) =>
+                    return @buildSoapError err, callback if err?
+                    callback null, resp
+
+                switch options?.BrowseFlag
+                    when 'BrowseMetadata'
+                        @browseMetadata options, browseCallback
+                    when 'BrowseDirectChildren'
+                        @browseChildren options, browseCallback
+                    else
+                        browseCallback new SoapError 402
+            else
+                @buildSoapError new SoapError(401), callback
+
+    startDb: ->
+        @redis = redis.createClient()
+        @redis.on 'error', (err) -> throw err
+        # Flush database. FIXME.
+        @redis.flushdb()
+
     addContentType: (type) ->
         @contentTypes ?= []
         unless type in @contentTypes
             @contentTypes.push type
             @emit 'newContentType'
-
 
     browseChildren: (options, callback) ->
         id    = parseInt(options?.ObjectID or 0)
@@ -66,39 +105,5 @@ class ContentDirectory extends Service
                     UpdateID: updateId
                     callback
                 )
-
-    Browse: (options, callback) ->
-        browseCallback = (err, resp) =>
-            if err
-                console.warn "Browse action caused #{err.message}."
-                @buildSoapError err, callback
-            else
-                callback null, resp
-
-        switch options?.BrowseFlag
-            when 'BrowseMetadata'
-                @browseMetadata options, browseCallback
-            when 'BrowseDirectChildren'
-                @browseChildren options, browseCallback
-            else
-                browseCallback new SoapError 402
-
-    GetSearchCapabilities: (options, callback) ->
-        @getStateVar 'SearchCapabilities', 'SearchCaps', callback
-
-    GetSortCapabilities: (options, callback) ->
-        @getStateVar 'SortCapabilities', 'SortCaps', callback
-
-    GetSystemUpdateID: (options, callback) ->
-        @getStateVar 'SystemUpdateID', 'Id', callback
-
-    Search: @optionalAction
-    CreateObject: @optionalAction
-    DestroyObject: @optionalAction
-    UpdateObject: @optionalAction
-    ImportResource: @optionalAction
-    ExportResource: @optionalAction
-    StopTransferResource: @optionalAction
-    GetTransferProgress: @optionalAction
 
 module.exports = ContentDirectory

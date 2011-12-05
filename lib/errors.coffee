@@ -18,6 +18,7 @@ class exports.SoapError extends Error
         STATUS_CODES =
             401: "Invalid Action"
             402: "Invalid Args"
+            404: "Invalid Var"
             501: "Action Failed"
             600: "Argument Value Invalid"
             601: "Argument Value Out of Range"
