@@ -54,7 +54,7 @@ class Service extends EventEmitter
         @buildSoapResponse action, el, callback
 
     # Notify all subscribers of updated state variables.
-    notify = -> do @subs[uuid].notify for uuid of @subs
+    notify: -> do @subs[uuid].notify for uuid of @subs
 
     buildSoapResponse: xml.buildSoapResponse
     buildSoapError: (err, callback) ->
