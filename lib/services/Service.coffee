@@ -39,18 +39,18 @@ class Service extends EventEmitter
         callback null, sid: uuid, timeout: "Second-#{timeout}"
 
     unsubscribe: (uuid) ->
-        console.info "Deleting subscription #{uuid}."
+        log.debug "Deleting subscription #{uuid}."
         delete @subs[uuid] if @subs[uuid]?
 
     # For optional actions not (yet) implemented.
-    optionalAction: (callback) -> @buildSoapError new SoapError(602), callback
+    optionalAction: (callback) -> callback null, @buildSoapError new SoapError(602)
 
     # Service actions that only return a State Variable.
     getStateVar: (action, elName, callback) ->
         # Actions start with 'Get' followed by variable name.
         varName = /^(Get)?(\w+)$/.exec(action)[2]
         unless varName of @stateVars
-            return @buildSoapError new SoapError(404), callback
+            return @buildSoapError new SoapError(404)
         (el={})[elName] = @stateVars[varName].value
         callback null, @buildSoapResponse action, el
 
@@ -58,9 +58,7 @@ class Service extends EventEmitter
     notify: -> do @subs[uuid].notify for uuid of @subs
 
     buildSoapResponse: xml.buildSoapResponse
-    buildSoapError: (err, callback) ->
-        log.notice "Browse action caused #{err.message}."
-        xml.buildSoapError.call @, err, callback
+    buildSoapError: xml.buildSoapError
     buildEvent: xml.buildEvent
     buildDidl: xml.buildDidl
 
@@ -89,7 +87,7 @@ class Subscription
     notify: ->
         # Specification states that all variables are sent out to all clients
         # even if only one variable changed.
-        console.info "Sending out event for current state variables to", @callbackUrls
+        log.debug "Sending out event for current state variables to", @callbackUrls
         eventedVars = {}
         for key, val of @service.stateVars when val.evented
             eventedVars[key] = val.value

@@ -59,7 +59,7 @@ exports.buildSoapResponse = (action, args) ->
     # objects, to make them separate XML elements.
     body[actionKey] = utils.objectToArray(args, body[actionKey])
 
-    return xmlDecl + xml [
+    xmlDecl + xml [
         's:Envelope': [
             _attr:
                 'xmlns:s': 'http://schemas.xmlsoap.org/soap/envelope/'
@@ -69,9 +69,9 @@ exports.buildSoapResponse = (action, args) ->
     ]
 
 # Build a SOAP error XML document. `@` is bound to a Service.
-exports.buildSoapError = (error, callback) ->
+exports.buildSoapError = (error) ->
 
-    callback null, xmlDecl + xml [
+    xmlDecl + xml [
         's:Envelope': [
             _attr:
                 'xmlns:s': 'http://schemas.xmlsoap.org/soap/envelope/'
@@ -94,15 +94,13 @@ exports.buildSoapError = (error, callback) ->
 
 
 # Build an event notification XML document.
-exports.buildEvent = (vars, callback) ->
-    resp = '<?xml version="1.0" encoding="utf-8"?>'
-    resp += xml [
+exports.buildEvent = (vars) ->
+    xmlDecl + xml [
         'e:propertyset': [
             _attr: { 'xmlns:e': protocol.makeNS 'event', @device.schemaPrefix, @device.schemaVersion }
             { 'e:property': utils.objectToArray vars }
         ]
     ]
-    callback null, resp
 
 
 # Build a DIDL XML structure for items/containers in the MediaServer device.

@@ -38,6 +38,7 @@ exports.start = (callback) ->
                     headers['Content-Type'] ?= null
                     headers['Content-Length'] ?= Buffer.byteLength(data)
 
+
                 res.writeHead 200, httpu.makeHeaders.call(@, headers)
                 res.write data if data?
 
@@ -60,9 +61,9 @@ exports.start = (callback) ->
                 # `soapaction` header is like `urn:schemas-upnp-org:service:serviceType:v#actionName`
                 serviceAction = /:\d#(\w+)"$/.exec(req.headers.soapaction)[1]
                 log.debug "#{serviceAction} on #{serviceType} invoked by #{req.client.remoteAddress}."
-                @services[serviceType].action(serviceAction, data
+                @services[serviceType].action serviceAction, data,
                     (err, soapResponse) ->
-                        callback err, soapResponse, ext: null)
+                        callback err, soapResponse, ext: null
 
         serviceEventHandler = =>
             log.debug "#{req.method} on #{serviceType} received from #{req.client.remoteAddress}."
@@ -75,9 +76,9 @@ exports.start = (callback) ->
                         # New subscription.
                         unless /<http/.test cbUrls
                             return callback new HttpError 412
-                        @services[serviceType].subscribe(cbUrls.slice(1, -1), timeout
+                        @services[serviceType].subscribe cbUrls.slice(1, -1), timeout,
                             (err, respHeaders) ->
-                                callback err, null, respHeaders)
+                                callback err, null, respHeaders
                     else if sid? and not (nt? or cbUrls?)
                         # `sid` is subscription ID, so this is a subscription
                         # renewal request.
@@ -127,9 +128,9 @@ exports.start = (callback) ->
                     return callback new HttpError 500 if err
                     fs.readFile object.location, (err, file) ->
                         return callback new HttpError 500 if err
-                        callback(null, file
+                        callback null, file,
                             'Content-Type': object.contenttype
-                            'Content-Length': object.filesize)
+                            'Content-Length': object.filesize
 
             else
                 callback new HttpError 404

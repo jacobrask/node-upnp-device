@@ -51,8 +51,7 @@ class ContentDirectory extends Service
         switch action
             when 'Browse'
                 browseCallback = (err, resp) =>
-                    return @buildSoapError err, callback if err?
-                    callback null, resp
+                    callback null, (if err? then @buildSoapError(err) else resp)
 
                 switch options?.BrowseFlag
                     when 'BrowseMetadata'
@@ -62,7 +61,7 @@ class ContentDirectory extends Service
                     else
                         browseCallback new SoapError 402
             else
-                @buildSoapError new SoapError(401), callback
+                callback null, @buildSoapError new SoapError(401)
 
     startDb: ->
         @redis = redis.createClient()
@@ -82,7 +81,7 @@ class ContentDirectory extends Service
         max   = parseInt(options?.RequestedCount or 0)
 
         @fetchChildren id, (err, objects) =>
-            return callback err if err
+            return callback err if err?
             # Limit matches. Should be done before fetch instead.
             end = if max is 0 then objects.length - 1 else start + max
             matches = objects[start..end]
@@ -96,9 +95,9 @@ class ContentDirectory extends Service
     browseMetadata: (options, callback) ->
         id = parseInt(options?.ObjectID or 0)
         @fetchObject id, (err, object) =>
-            return callback err if err
+            return callback err if err?
             @getUpdateId id, (err, updateId) =>
-                callback err, @buildSoapResponse, 'Browse'
+                callback err, @buildSoapResponse 'Browse',
                     NumberReturned: 1
                     TotalMatches: 1
                     Result: @buildDidl [ object ]
@@ -190,7 +189,7 @@ class ContentDirectory extends Service
 
             fs.stat obj.location, (err, stats) ->
                 if err
-                    console.warn "Error reading file #{obj.location}, setting file size to 0."
+                    log.notice "Error reading file #{obj.location}, setting file size to 0."
                     item.filesize = 0
                 else
                     item.filesize = stats.size
@@ -255,7 +254,6 @@ class ContentDirectory extends Service
     fetchObject: (id, callback) ->
         uuid = @device.uuid
         @redis.hgetall "#{uuid}:#{id}", (err, object) ->
-            console.log object
             return callback new SoapError 501 if err?
             return callback new SoapError 701 unless Object.keys(object).length > 0
             callback null, object

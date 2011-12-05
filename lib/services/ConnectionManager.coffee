@@ -42,7 +42,7 @@ class ConnectionManager extends Service
             when 'GetCurrentConnectionInfo'
                 @makeConnectionInfo()
             else
-                @buildSoapError new SoapError(401), callback
+                callback null, @buildSoapError new SoapError(401)
 
 
     # Build Protocol Info string, `protocol:network:contenttype:additional`.
@@ -50,14 +50,13 @@ class ConnectionManager extends Service
         ("http-get:*:#{type}:*" for type in @device.services.ContentDirectory.contentTypes).join(',')
 
     makeProtocolInfo: (options, callback) ->
-        @buildSoapResponse 'GetProtocolInfo',
+        callback null, @buildSoapResponse 'GetProtocolInfo',
             Source: @stateVars.SourceProtocolInfo.value, Sink: ''
-            callback
 
     makeConnectionInfo: (options, callback) ->
         # `PrepareForConnection` is not implemented, so only `ConnectionID`
         # available is `0`. The following are defaults from specification.
-        @buildSoapResponse 'GetCurrentConnectionInfo',
+        callback null, @buildSoapResponse 'GetCurrentConnectionInfo',
             RcsID: -1
             AVTransportID: -1
             ProtocolInfo: @protocols.join(',')
@@ -65,6 +64,5 @@ class ConnectionManager extends Service
             PeerConnectionID: -1
             Direction: 'Output'
             Status: 'OK'
-            callback
 
 module.exports = ConnectionManager
