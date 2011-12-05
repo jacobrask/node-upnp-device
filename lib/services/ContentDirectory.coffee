@@ -4,11 +4,12 @@
 
 async = require 'async'
 fs    = require 'fs'
+log   = new (require 'log')
 mime  = require 'mime'
 redis = require 'redis'
 
 Service = require './Service'
-{SoapError} = require '../xml'
+{SoapError} = require '../errors'
 
 # Capitalized properties are native UPnP control actions.
 class ContentDirectory extends Service
@@ -86,28 +87,22 @@ class ContentDirectory extends Service
             end = if max is 0 then objects.length - 1 else start + max
             matches = objects[start..end]
             @getUpdateId id, (err, updateId) =>
-                @buildSoapResponse(
-                    'Browse'
+                callback err, @buildSoapResponse 'Browse',
                     NumberReturned: matches.length
                     TotalMatches: objects.length
                     Result: @buildDidl matches
                     UpdateID: updateId
-                    callback
-                )
 
     browseMetadata: (options, callback) ->
         id = parseInt(options?.ObjectID or 0)
         @fetchObject id, (err, object) =>
             return callback err if err
             @getUpdateId id, (err, updateId) =>
-                @buildSoapResponse(
-                    'Browse'
+                callback err, @buildSoapResponse, 'Browse'
                     NumberReturned: 1
                     TotalMatches: 1
                     Result: @buildDidl [ object ]
                     UpdateID: updateId
-                    callback
-                )
 
     addMedia: (parentID, media, callback) ->
 
@@ -154,7 +149,7 @@ class ContentDirectory extends Service
                 location: obj.location
 
             contentType = obj.contetType or mime.lookup(obj.location)
-            @services.ContentDirectory.addContentType contentType
+            @addContentType contentType
             item.contenttype = contentType
 
             # Try to figure out type from parent type.
@@ -217,64 +212,70 @@ class ContentDirectory extends Service
 
     # Add object to Redis data store.
     insertContent: (parentID, object, callback) ->
+        uuid = @device.uuid
         type = /object\.(\w+)/.exec(object.class)[1]
         # Increment and return Object ID.
-        @redis.incr "#{@uuid}:nextid", (err, id) =>
+        @redis.incr "#{uuid}:nextid", (err, id) =>
             # Add Object ID to parent containers's child set.
-            @redis.sadd "#{@uuid}:#{parentID}:children", id
+            @redis.sadd "#{uuid}:#{parentID}:children", id
             # Increment each time container (or parent container) is modified.
-            @redis.incr "#{@uuid}:#{if type is 'container' then id else parentID}:updateid"
+            @redis.incr "#{uuid}:#{if type is 'container' then id else parentID}:updateid"
             # Add ID's to item data structure and insert into data store.
             object.id = id
             object.parentid = parentID
-            @redis.hmset "#{@uuid}:#{id}", object
+            @redis.hmset "#{uuid}:#{id}", object
             callback err, id
 
     # Remove object with @id and all its children.
     removeContent: (id, callback) ->
-        @redis.smembers "#{@uuid}:#{id}:children", (err, childIds) =>
+        uuid = @device.uuid
+        @redis.smembers "#{uuid}:#{id}:children", (err, childIds) =>
             return callback new SoapError 501 if err?
             for childId in childIds
-                @redis.del "#{@uuid}:#{childId}"
-            @redis.del [ "#{@uuid}:#{id}", "#{@uuid}:#{id}:children", "#{@uuid}:#{id}:updateid" ]
+                @redis.del "#{uuid}:#{childId}"
+            @redis.del [ "#{uuid}:#{id}", "#{uuid}:#{id}:children", "#{uuid}:#{id}:updateid" ]
             # Return value shouldn't matter to client, at least for now.
             # If the smembers call worked at least we know the db is working.
             callback null
 
     # Get metadata of all direct children of object with @id.
     fetchChildren: (id, callback) ->
-        @redis.smembers "#{@uuid}:#{id}:children", (err, childIds) =>
+        uuid = @device.uuid
+        @redis.smembers "#{uuid}:#{id}:children", (err, childIds) =>
             return callback new SoapError 501 if err?
             return callback new SoapError 701 unless childIds.length
             async.concat(
                 childIds
-                (cId, callback) => @redis.hgetall "#{@uuid}:#{cId}", callback
+                (cId, callback) => @redis.hgetall "#{uuid}:#{cId}", callback
                 (err, results) ->
                     callback err, results
             )
 
     # Get metadata of object with @id.
     fetchObject: (id, callback) ->
-        @redis.hgetall "#{@uuid}:#{id}", (err, object) ->
+        uuid = @device.uuid
+        @redis.hgetall "#{uuid}:#{id}", (err, object) ->
+            console.log object
             return callback new SoapError 501 if err?
             return callback new SoapError 701 unless Object.keys(object).length > 0
             callback null, object
 
     getUpdateId: (id, callback) ->
+        uuid = @device.uuid
         getId = (id, callback) =>
-            @redis.get "#{@uuid}:#{id}:updateid", (err, updateId) ->
+            @redis.get "#{uuid}:#{id}:updateid", (err, updateId) ->
                 return callback new SoapError 501 if err?
                 callback null, updateId
 
         if id is 0
-            return callback null, @services.ContentDirectory.stateVars.SystemUpdateID.value
+            return callback null, @stateVars.SystemUpdateID.value
         else
-            @redis.exists "#{@uuid}:#{id}:updateid", (err, exists) =>
+            @redis.exists "#{uuid}:#{id}:updateid", (err, exists) =>
                 # If this ID doesn't have an updateid key, get parent's updateid.
                 if exists is 1
                     getId id, callback
                 else
-                    @redis.hget "#{@uuid}:#{id}", 'parentid', (err, parentId) =>
+                    @redis.hget "#{uuid}:#{id}", 'parentid', (err, parentId) =>
                         getId parentId, callback
 
 module.exports = ContentDirectory

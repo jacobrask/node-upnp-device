@@ -59,7 +59,7 @@ exports.buildSoapResponse = (action, args) ->
     # objects, to make them separate XML elements.
     body[actionKey] = utils.objectToArray(args, body[actionKey])
 
-    callback null, xmlDecl + xml [
+    return xmlDecl + xml [
         's:Envelope': [
             _attr:
                 'xmlns:s': 'http://schemas.xmlsoap.org/soap/envelope/'
@@ -71,8 +71,7 @@ exports.buildSoapResponse = (action, args) ->
 # Build a SOAP error XML document. `@` is bound to a Service.
 exports.buildSoapError = (error, callback) ->
 
-    resp = '<?xml version="1.0" encoding="utf-8"?>'
-    callback null, xmlDecl, + xml [
+    callback null, xmlDecl + xml [
         's:Envelope': [
             _attr:
                 'xmlns:s': 'http://schemas.xmlsoap.org/soap/envelope/'
@@ -100,7 +99,7 @@ exports.buildEvent = (vars, callback) ->
     resp += xml [
         'e:propertyset': [
             _attr: { 'xmlns:e': protocol.makeNS 'event', @device.schemaPrefix, @device.schemaVersion }
-            { 'e:property': utils.objecttoArray vars }
+            { 'e:property': utils.objectToArray vars }
         ]
     ]
     callback null, resp
@@ -108,7 +107,6 @@ exports.buildEvent = (vars, callback) ->
 
 # Build a DIDL XML structure for items/containers in the MediaServer device.
 exports.buildDidl = (data) ->
-
     # Build an array of elements contained in an object element.
     buildObject = (obj) =>
         el = []
@@ -135,7 +133,7 @@ exports.buildDidl = (data) ->
     body['DIDL-Lite'] = []
     body['DIDL-Lite'].push(
         _attr:
-            'xmlns': protocol.makeNS 'metadata', @device.schemaPrefix, @device.schemaversion, '/DIDL-Lite/'
+            'xmlns': protocol.makeNS 'metadata', @device.schemaPrefix, @device.schemaVersion, '/DIDL-Lite/'
             'xmlns:dc': 'http://purl.org/dc/elements/1.1/'
             'xmlns:upnp': protocol.makeNS 'metadata', @device.schemaPrefix, @device.schemaVersion, '/upnp/'
     )

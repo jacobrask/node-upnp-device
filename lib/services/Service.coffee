@@ -4,6 +4,7 @@
 "use strict"
 
 {EventEmitter} = require 'events'
+log = new (require 'log')
 makeUuid = require 'node-uuid'
 {Parser:XmlParser} = require 'xml2js'
 
@@ -51,7 +52,7 @@ class Service extends EventEmitter
         unless varName of @stateVars
             return @buildSoapError new SoapError(404), callback
         (el={})[elName] = @stateVars[varName].value
-        @buildSoapResponse action, el, callback
+        callback null, @buildSoapResponse action, el
 
     # Notify all subscribers of updated state variables.
     notify: -> do @subs[uuid].notify for uuid of @subs
@@ -59,7 +60,7 @@ class Service extends EventEmitter
     buildSoapResponse: xml.buildSoapResponse
     buildSoapError: (err, callback) ->
         log.notice "Browse action caused #{err.message}."
-        xml.buildSoapError err, callback
+        xml.buildSoapError.call @, err, callback
     buildEvent: xml.buildEvent
     buildDidl: xml.buildDidl
 

@@ -63,4 +63,8 @@ class MediaServer extends Device
         @addService type for type in ['ConnectionManager','ContentDirectory']
         @init()
 
+    addMedia: ->
+        @services.ContentDirectory.addMedia arguments...
+
+
 devices = mediaserver: MediaServer

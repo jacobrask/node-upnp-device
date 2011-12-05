@@ -119,11 +119,11 @@ parseHeaders = (msg, callback) ->
 makeDeviceUrl = (path) ->
     url.format(
         protocol: 'http'
-        hostname: @address  or @device.address
-        port:     @httpPort or @device.httpPort
+        hostname: @address  or @device?.address
+        port:     @httpPort or @device?.httpPort
         pathname: path
     )
-makeDescriptionUrl = (address, port) ->
+makeDescriptionUrl = ->
     makeDeviceUrl.call @, '/device/description'
 makeContentUrl = exports.makeContentUrl = (id) ->
     makeDeviceUrl.call @, "/resource/#{id}"
