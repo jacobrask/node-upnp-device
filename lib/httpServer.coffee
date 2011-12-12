@@ -8,7 +8,7 @@ log = new (require 'log')
 
 {HttpError,ContextError} = require './errors'
 helpers = require './helpers'
-httpu = require './httpu'
+protocol = require './protocol'
 xml = require './xml'
 
 # HTTP servers are device specific, so `@` should be bound to a device.
@@ -39,7 +39,7 @@ exports.start = (callback) ->
                     headers['Content-Length'] ?= Buffer.byteLength(data)
 
 
-                res.writeHead 200, httpu.makeHeaders.call(@, headers)
+                res.writeHead 200, protocol.makeHeaders.call(@, headers)
                 res.write data if data?
 
             res.end()
@@ -76,15 +76,13 @@ exports.start = (callback) ->
                         # New subscription.
                         unless /<http/.test cbUrls
                             return callback new HttpError 412
-                        @services[serviceType].subscribe cbUrls.slice(1, -1), timeout,
-                            (err, respHeaders) ->
-                                callback err, null, respHeaders
+                        respHeaders = @services[serviceType].subscribe cbUrls.slice(1, -1), timeout
+                        callback null, null, respHeaders
                     else if sid? and not (nt? or cbUrls?)
                         # `sid` is subscription ID, so this is a subscription
                         # renewal request.
-                        @services[serviceType].renew sid, timeout, ->
-                            (err, respHeaders) ->
-                                callback err, null, respHeaders
+                        respHeaders = @services[serviceType].renew sid, timeout
+                        callback (if respHeaders? then null else new HttpError(412)), null, respHeaders
                     else
                         return callback new HttpError 400
 
@@ -95,7 +93,7 @@ exports.start = (callback) ->
                         return callback new HttpError 400
                     @services[serviceType].unsubscribe sid
                     # Unsubscription response is `200 OK`.
-                    callback()
+                    callback null
 
                 else
                     callback new HttpError 405

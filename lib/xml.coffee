@@ -5,7 +5,6 @@ os  = require 'os'
 xml = require 'xml'
 
 {ContextError} = require './errors'
-httpu    = require './httpu'
 protocol = require './protocol'
 utils    = require './utils'
 
@@ -124,7 +123,7 @@ exports.buildDidl = (data) ->
                 _attr:
                     protocolInfo: "http-get:*:#{obj.contenttype}:*"
                     size: obj.filesize
-                httpu.makeContentUrl.call(@, obj.id) ]
+                protocol.makeContentUrl.call(@, obj.id) ]
         el
 
     body = {}

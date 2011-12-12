@@ -41,10 +41,7 @@ class Device extends EventEmitter
                 @httpPort = res.port
                 @emit 'ready'
 
-    announce: (callback) ->
-        ssdp.start.call @
-        do callback if callback?
-        @
+    announce: ssdp.start
 
     addService: (type) ->
         (@services?={})[type] = new services[type](@)

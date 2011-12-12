@@ -8,10 +8,9 @@ log = new (require 'log')
 makeUuid = require 'node-uuid'
 {Parser:XmlParser} = require 'xml2js'
 
-httpu    = require '../httpu'
+{SoapError} = require '../errors'
 protocol = require '../protocol'
 xml      = require '../xml'
-{HttpError} = httpu
 
 class Service extends EventEmitter
 
@@ -23,20 +22,20 @@ class Service extends EventEmitter
             @actionHandler action, data['s:Body']["u:#{action}"], callback
 
     # Event subscriptions.
-    subscribe: (cbUrls, reqTimeout, callback) ->
+    subscribe: (cbUrls, reqTimeout) ->
         uuid = "uuid:#{makeUuid()}"
         (@subs?={})[uuid] = new Subscription uuid, cbUrls, @
         timeout = @subs[uuid].selfDestruct reqTimeout
         log.debug "Added new subscription for #{@type} with #{uuid}, expiring in #{timeout}s."
-        callback null, sid: uuid, timeout: "Second-#{timeout}"
+        sid: uuid, timeout: "Second-#{timeout}"
 
-    renew: (uuid, reqTimeout, callback) ->
+    renew: (uuid, reqTimeout) ->
         unless @subs[uuid]?
             log.warning "Got subscription renewal request but could not find device #{sid}."
-            return callback new HttpError 412
+            return null
         timeout = @subs[uuid].selfDestruct reqTimeout
         log.debug "Renewing subscription #{uuid}, expiring in #{timeout}s."
-        callback null, sid: uuid, timeout: "Second-#{timeout}"
+        sid: uuid, timeout: "Second-#{timeout}"
 
     unsubscribe: (uuid) ->
         log.debug "Deleting subscription #{uuid}."
@@ -87,12 +86,12 @@ class Subscription
     notify: ->
         # Specification states that all variables are sent out to all clients
         # even if only one variable changed.
-        log.debug "Sending out event for current state variables to", @callbackUrls
+        log.debug "Sending out event for current state variables to #{@callbackUrls}"
         eventedVars = {}
         for key, val of @service.stateVars when val.evented
             eventedVars[key] = val.value
-        @service.buildEvent eventedVars, (err, resp) =>
-            httpu.postEvent.call @service.device, @callbackUrls, @uuid, @eventKey, resp
+        eventXML = @service.buildEvent eventedVars
+        protocol.postEvent.call @service.device, @callbackUrls, @uuid, @eventKey, eventXML
         @eventKey++
 
 module.exports = Service
