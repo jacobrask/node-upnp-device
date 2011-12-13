@@ -5,11 +5,17 @@
 
 http = require 'http'
 log = new (require 'log')
-os   = require 'os'
-url  = require 'url'
+os = require 'os'
+url = require 'url'
+
+{ContextError} = require './errors'
 
 # Make namespace string.
-exports.makeNS = (category, prefix, version, suffix = '') ->
+exports.makeNS = (category, suffix = '') ->
+    throw new ContextError() if @makeNS? or @ is global
+    category ?= if @device? then 'service' else 'device'
+    version = @schemaVersion or @device.schemaVersion
+    prefix = @schemaPrefix or @device.schemaPrefix
     prefix + ':' + [
         category
         version.split('.')[0]
@@ -17,15 +23,14 @@ exports.makeNS = (category, prefix, version, suffix = '') ->
 
 # Make Device/Service type string for SSDP messages
 # and Service/Device descriptions.
-makeType = (category) ->
-    [ @schemaPrefix || @device.schemaPrefix
+makeType = exports.makeType = ->
+    throw new ContextError() if @makeType? or @ is global
+    category = if @device? then 'service' else 'device'
+    [ @schemaPrefix or @device.schemaPrefix
       category
       @type
-      @version || @device.version
+      @version or @device.version
     ].join ':'
-
-makeDeviceType = exports.makeDeviceType = -> makeType.call @, 'device'
-makeServiceType = exports.makeServiceType = -> makeType.call @, 'service'
 
 # Generate an HTTP header object for HTTP and SSDP messages.
 makeHeaders = exports.makeHeaders = (customHeaders) ->
@@ -69,7 +74,7 @@ exports.makeSSDPMessage = (reqType, customHeaders) ->
     for header, value of headers
         message.push "#{header.toUpperCase()}: #{value}"
 
-    log.debug "Made #{reqType} message: #{message.join(' | ')}"
+    log.debug "Sent #{message.join(' | ')}"
 
     # Add carriage returns and newlines as required by HTTP spec.
     message.push '\r\n'
@@ -79,10 +84,8 @@ exports.makeSSDPMessage = (reqType, customHeaders) ->
 exports.makeNotificationTypes = ->
     [ 'upnp:rootdevice'
       @uuid
-      makeDeviceType.call @
-    ].concat(
-        makeServiceType.call(s) for name, s of @services
-    )
+      makeType.call @
+    ].concat(makeType.call s for name, s of @services)
 
 # UPnP Device info for `SERVER` header.
 makeServerString = ->
@@ -106,7 +109,7 @@ exports.postEvent = (urls, uuid, eventKey, data) ->
             port: u.port
             method: 'NOTIFY'
             path: u.pathname
-            headers: makeHeaders(h)
+            headers: makeHeaders h
         req = http.request options
         req.on 'error', (err) ->
             log.debug "Event request failed: #{err.message}"
@@ -115,13 +118,12 @@ exports.postEvent = (urls, uuid, eventKey, data) ->
 
 exports.parseRequest = (msg, rinfo, callback) ->
     parseHeaders msg, (err, req) ->
-        callback null, {
+        callback null,
             method: req.method
             maxWait: req.headers.mx
             searchType: req.headers.st
             address: rinfo.address
             port: rinfo.port
-        }
 
 # Parse SSDP headers using the HTTP module parser.
 # This API is not documented and not guaranteed to be stable.
@@ -135,12 +137,12 @@ parseHeaders = (msg, callback) ->
 
 # URL generation.
 makeDeviceUrl = (path) ->
-    url.format(
+    url.format
         protocol: 'http'
-        hostname: @address  or @device?.address
-        port:     @httpPort or @device?.httpPort
+        hostname: @address or @device?.address
+        port: @httpPort or @device?.httpPort
         pathname: path
-    )
+
 makeDescriptionUrl = ->
     makeDeviceUrl.call @, '/device/description'
 makeContentUrl = exports.makeContentUrl = (id) ->

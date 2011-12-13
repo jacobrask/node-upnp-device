@@ -32,8 +32,7 @@ class ConnectionManager extends Service
         return @optionalAction callback if action in optionalActions
 
         # State variable actions and associated XML element names.
-        stateActions =
-            GetCurrentConnectionIDs: 'ConnectionIDs'
+        stateActions = GetCurrentConnectionIDs: 'ConnectionIDs'
         return @getStateVar action, stateActions[action], callback if action of stateActions
 
         switch action

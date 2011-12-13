@@ -10,7 +10,7 @@ makeUuid = require 'node-uuid'
 
 {SoapError} = require '../errors'
 protocol = require '../protocol'
-xml      = require '../xml'
+xml = require '../xml'
 
 class Service extends EventEmitter
 
@@ -56,17 +56,17 @@ class Service extends EventEmitter
     # Notify all subscribers of updated state variables.
     notify: -> do @subs[uuid].notify for uuid of @subs
 
-    buildSoapResponse: xml.buildSoapResponse
-    buildSoapError: xml.buildSoapError
-    buildEvent: xml.buildEvent
-    buildDidl: xml.buildDidl
+    buildSoapResponse: -> xml.buildSoapResponse.call @device, arguments...
+    buildSoapError: -> xml.buildSoapError.call @device, arguments...
+    buildEvent: -> xml.buildEvent.call @device, arguments...
+    buildDidl: -> xml.buildDidl.call @device, arguments...
 
 
 class Subscription
     constructor: (@uuid, urls, @service) ->
         @eventKey = 0
         @minTimeout = 1800
-        @callbackUrls = urls.split(',')
+        @callbackUrls = urls.split ','
         @notify()
 
     selfDestruct: (timeout) ->
@@ -78,7 +78,7 @@ class Subscription
         else
             time = parseInt(time)
         @destructionTimer = setTimeout(
-            => @service.unsubscribe(@uuid)
+            => @service.unsubscribe @uuid
             time * 1000)
         # Return actual time until unsubscription.
         time

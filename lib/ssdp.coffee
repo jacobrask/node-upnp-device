@@ -31,7 +31,7 @@ exports.start = ->
         searchType in [
             'ssdp:all'
             'upnp:rootdevice'
-             protocol.makeDeviceType.call @
+             protocol.makeType.call @
              @uuid ]
 
     # Create a UDP socket, send messages, then close socket.
