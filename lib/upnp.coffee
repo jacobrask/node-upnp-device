@@ -39,9 +39,8 @@ class Device extends EventEmitter
                 @uuid = "uuid:#{res.uuid}"
                 @address = res.address
                 @httpPort = res.port
+                ssdp.start.call @
                 @emit 'ready'
-
-    announce: ssdp.start
 
     addService: (type) ->
         (@services?={})[type] = new services[type](@)

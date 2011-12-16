@@ -45,7 +45,7 @@ For a real world usage example, look at [Bragi], a media server using node-upnp-
 
 `function() { }`
 
-Emitted when the server has been assigned an IP, an UUID and the HTTP server has started.
+Emitted when the server has been assigned an IP, the HTTP server has started and SSDP messaging has been initialized.
 
 #### Event: 'error'
 
@@ -56,10 +56,6 @@ Emitted when the server has been assigned an IP, an UUID and the HTTP server has
 * type - A device specified by the [UPnP Forum][upnp-dcp].
 * name - The name of the device as it shows up in the network.
 * address - Optional IP address to bind server to.
-
-### device.announce()
-
-Announces the device over SSDP to the local network.
 
 ### device.addMedia(parentID, media[, callback])
 
