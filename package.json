@@ -1,28 +1,30 @@
 {
-    "name": "upnp-device",
-    "version": "0.1.0",
-    "description": "Create UPnP devices in Node.js",
-    "author": "Jacob Rask (http://jacobrask.net)",
-    "keywords": [ "upnp", "multimedia" ],
-    "dependencies": {
-        "async": "*",
-        "coffee-script": "*",
-        "mime": ">=1.2.4",
-        "node-uuid": "*",
-        "redis": ">=0.7.1",
-        "xml": ">=0.0.5",
-        "xml2js": ">=0.1.11"
-    },
-    "devDependencies": {
-        "nodeunit": "*"
-    },
-    "licenses": [ {
-        "type": "MIT",
-        "url": "http://github.com/jacobrask/node-upnp-device/raw/master/LICENSE"
-    } ],
-    "homepage": "https://github.com/jacobrask/node-upnp-device",
-    "repository": {
-        "type": "git",
-        "url": "git://github.com/jacobrask/node-upnp-device.git"
-    }
+  "name": "upnp-device",
+  "version": "0.0.1",
+  "description": "Create UPnP devices in Node.js",
+  "keywords": [ "upnp" ],
+  "author": { "name": "Jacob Rask", "email": "jacob@jacobrask.net" },
+  "homepage": "https://github.com/jacobrask/node-upnp-device",
+  "bugs": "https://github.com/jacobrask/node-upnp-device/issues",
+  "main": "./index",
+  "directories": { "lib": "./lib" },
+  "engines": { "node": "<= 0.4.12" },
+  "dependencies": {
+    "async": "*",
+    "coffee-script": "*",
+    "log": "*",
+    "mime": "*",
+    "node-uuid": "*",
+    "redis": "*",
+    "xml": "*",
+    "xml2js": "*"
+  },
+  "licenses": [ {
+    "type": "MIT",
+    "url": "http://github.com/jacobrask/node-upnp-device/raw/master/LICENSE"
+  } ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/jacobrask/node-upnp-device.git"
+  }
 }
