@@ -19,9 +19,8 @@ Note that you need Node 0.4.12. upnp-device is ___not___ compatible with Node 0.
 
 # Documentation
 
-## Basic usage
 
-### JavaScript
+## Basic usage
 
 ```javascript
 var upnp = require('upnp-device');
@@ -36,13 +35,21 @@ mediaServer.on('ready', function() {
 });
 ```
 
+For a real world usage example, look at [Bragi], a media server using node-upnp-device.
+
 ## API
 
 ### upnp.Device
 
 #### Event: 'ready'
 
+`function() { }`
+
+Emitted when the server has been assigned an IP, an UUID and the HTTP server has started.
+
 #### Event: 'error'
+
+`function(err) { }`
 
 ### upnp.createDevice(type, name[, address])
 
@@ -110,3 +117,4 @@ Contributions and comments are welcome on GitHub or IRC (jacobrask@FreeNode).
 [upnp-dcp]: http://upnp.org/sdcps-and-certification/standards/sdcps/
 [upnp-uda]: http://upnp.org/sdcps-and-certification/standards/device-architecture-documents/
 [upnp-av]: http://upnp.org/specs/av/av1/
+[bragi]: https://github.com/jacobrask/bragi
