@@ -122,7 +122,6 @@ class ContentDirectory extends Service
 
         # Insert root element and then iterate through its children and insert them.
         buildObject media, (err, object) =>
-            console.log object
             @insertContent parentID, object, callback
 
 
