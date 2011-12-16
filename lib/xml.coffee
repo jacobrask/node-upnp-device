@@ -97,10 +97,10 @@ exports.buildDidl = (data) ->
         }
         el.push 'dc:title': obj.title
         el.push 'upnp:class': obj.class
-        if obj.creator
+        if obj.creator?
             el.push 'dc:creator': obj.creator
             el.push 'upnp:artist': obj.creator
-        if obj.location
+        if obj.location?
             el.push 'res': [
                 _attr:
                     protocolInfo: "http-get:*:#{obj.contenttype}:*"

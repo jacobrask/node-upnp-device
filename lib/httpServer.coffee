@@ -122,7 +122,7 @@ exports.start = (callback) ->
                         callback new HttpError 404
 
             when 'resource'
-                @fetchObject action, (err, object) ->
+                @services.ContentDirectory.fetchObject action, (err, object) ->
                     return callback new HttpError 500 if err
                     fs.readFile object.location, (err, file) ->
                         return callback new HttpError 500 if err

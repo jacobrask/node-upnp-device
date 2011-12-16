@@ -2,15 +2,12 @@
 
 upnp-device lets you create [UPnP Devices][upnp-dcp] in Node.js. The goal is to have an easy to use API, rather than exposing all UPnP internals.
 
-The only device currently (mostly) implemented is MediaServer:1.
 
+# Limitations
 
-# Features so far
-
-* Device and service descriptions.
-* SSDP notifications and replies.
-* Events, subscriptions and control actions.
-* MediaServer:1 device with ConnectionManager and ContentDirectory services.
+* Only implemented device specification is MediaServer:1
+* MediaServer can only serve media from local file system
+* And more...
 
 
 # Install
@@ -31,13 +28,13 @@ Additionally, to use the MediaServer device you need to install [redis](http://r
 ```javascript
 var upnp = require('upnp-device');
 
-var ms = upnp.createDevice('MediaServer', 'My Media Application');
+var mediaServer = upnp.createDevice('MediaServer', 'My Media Application');
 
-ms.on('ready', function() {
-    ms.addMedia(0, media, function(err, id) {
+mediaServer.on('ready', function() {
+    mediaServer.addMedia(0, media, function(err, id) {
         console.log("Added new media with ID:" + id);
     });
-    ms.announce();
+    mediaServer.announce();
 });
 ```
 
@@ -53,7 +50,7 @@ ms.on('ready', function() {
 
 * type - A device specified by the [UPnP Forum][upnp-dcp].
 * name - The name of the device as it shows up in the network.
-* address - Optional IP address to bind to.
+* address - Optional IP address to bind server to.
 
 ### device.announce()
 
@@ -63,60 +60,27 @@ Announces the device over SSDP to the local network.
 
 Applies to MediaServer.
 
-UPnP Device only stores this info for as long as it is running. It is the responsibility of the client to store media information across restarts.
-
 The metadata needs to be extracted by the client, either through user input or by reading for example ID3 tags.
 
 * parentID - Parent container of media. 0 means root.
-* media - A JSON structure of containers and items. See examples below.
+* properties - Object with class properties. Example below.
 * [callback(err, id)] - Called when all media has been added to the database. Returns the ID of the top container added.
 
-```javascript
-{
-    type: 'folder|musicalbum|photoalbum|musicartist|musicgenre|moviegenre',
-    title: 'Container title',
-    creator: 'Artist, photographer...',
-    description: 'Container description',
-    genre: 'Music or movie genre',
-    children: [ {
-        type: 'musictrack|audio|image|photo|movie|musicvideo|video|audiobook, inferred from parent type if applicable.',
-        title: 'Item title',
-        creator: 'Inherits from parent.',
-        description: 'Item description',
-        language: 'Inherits from parent.',
-        date: 'Inherits from parent.',
-        genre: 'Music or movie genre. Inherits from parent.',
-        location: 'Path or URI to media resource.',
-        contentType: 'Internet media type. Guessed from filename if possible.'
-    } ]
-}
+```
+container = {
+    class: 'object.container.album.musicAlbum',
+    title: 'My album' };
+item = {
+    class: 'object.container.audioItem.musicTrack',
+    title: 'My song',
+    creator: 'An artist',
+    location: '/media/mp3/an_artist-my_song.mp3',
+    album: 'My album' };
 ```
 
-This might look slightly complex, but most properties are optional and many inherit from parents. Another example:
+Other official UPnP classes and properties are defined in the [MediaServer specification][upnp-av].
 
-```javascript
-{
-    type: 'musicalbum',
-    title: 'To the Extreme',
-    creator: 'Vanilla Ice',
-    genre: 'Rap',
-    date: '1990',
-    children: [ {
-        title: 'Ice Ice Baby',
-        res: '/media/music/ice_ice_baby.mp3'
-    }, {
-        title: 'Yo Vanilla',
-        res: '/media/music/yo_vanilla.mp3'
-    } ]
-}
-```
-
-### device.removeMedia(id[, callback])
-
-Applies to MediaServer.
-
-* id - ID of object to remove. If it has children, they will also be removed.
-* [callback(err)]
+The server only stores this info for as long as it is running. It is the responsibility of the client to store media information across restarts if desired.
 
 
 # Development

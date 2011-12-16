@@ -7,6 +7,7 @@ fs    = require 'fs'
 log   = new (require 'log')
 mime  = require 'mime'
 redis = require 'redis'
+mime.define 'audio/flac': ['flac']
 
 Service = require './Service'
 {SoapError} = require '../errors'
@@ -64,9 +65,10 @@ class ContentDirectory extends Service
                 callback null, @buildSoapError new SoapError(401)
 
     startDb: ->
+        # Should probably create a private redis process here instead.
         @redis = redis.createClient()
         @redis.on 'error', (err) -> throw err
-        # Flush database. FIXME.
+        @redis.select 9
         @redis.flushdb()
 
     addContentType: (type) ->
@@ -103,177 +105,86 @@ class ContentDirectory extends Service
                     Result: @buildDidl [ object ]
                     UpdateID: updateId
 
+
     addMedia: (parentID, media, callback) ->
+        unless media.class? and media.title?
+            return callback new Error 'Missing required property.'
 
-        buildObject = (obj, parent, callback) ->
-            # If an object has children, it's a container.
-            if obj.children?
-                buildContainer obj, callback
-            else
-                buildItem obj, parent, callback
+        buildObject = (object, callback) =>
+            object.type = /object\.(\w+)/.exec(object.class)[1]
+            if object.type is 'item' and object.location?
+                object.contenttype ?= mime.lookup(object.location)
+                @addContentType object.contenttype
 
-        buildContainer = (obj, callback) ->
-            cnt =
-                class: 'object.container.'
-            switch obj.type
-                when 'musicalbum'
-                    cnt.class +='album.musicAlbum'
-                    cnt.title = obj.title or 'Untitled album'
-                    cnt.creator = obj.creator
-                when 'photoalbum'
-                    cnt.class += 'album.photoAlbum'
-                    cnt.title = obj.creator or 'Untitled album'
-                when 'musicartist'
-                    cnt.class += 'person.musicArtist'
-                    cnt.title = obj.creator or 'Unknown artist'
-                    cnt.creator = obj.creator or obj.title
-                when 'musicgenre'
-                    cnt.class += 'genre.musicGenre'
-                    cnt.title = obj.title or 'Unknown genre'
-                when 'moviegenre'
-                    cnt.class += 'genre.movieGenre'
-                    cnt.title = obj.title or 'Unknown genre'
-                else
-                    cnt.class += 'storageFolder'
-                    cnt.title = obj.title or 'Folder'
+            fs.stat object.location, (err, stats) ->
+                object.filesize = stats?.size or 0
+                callback null, object
 
-            cnt.class = 'object.container'
-            callback null, cnt
-
-        buildItem = (obj, parent, callback) =>
-            item =
-                class: 'object.item'
-                title: obj.title or 'Untitled'
-                creator: obj.creator or parent.creator
-                location: obj.location
-
-            contentType = obj.contetType or mime.lookup(obj.location)
-            @addContentType contentType
-            item.contenttype = contentType
-
-            # Try to figure out type from parent type.
-            obj.type ?=
-                switch parent?.type
-                    when 'musicalbum' or'musicartist' or 'musicgenre'
-                        'musictrack'
-                    when 'photoalbum'
-                        'photo'
-                    when 'moviegenre'
-                        'movie'
-                    else
-                        # Get the first part of the mime type as a last guess.
-                        mimeType.split('/')[0]
-
-            item.class +=
-                switch obj.type
-                    when 'audio'
-                        'audioItem'
-                    when 'audiobook'
-                        '.audioItem.audioBook'
-                    when 'musictrack'
-                        '.audioItem.musicTrack'
-                    when 'image'
-                        '.imageItem'
-                    when 'photo'
-                        '.imageItem.photo'
-                    when 'video'
-                        '.videoItem'
-                    when 'musicvideo'
-                        '.videoItem.musicVideoClip'
-                    when 'movie'
-                        '.videoItem.movie'
-                    when 'text'
-                        '.textItem'
-                    else
-                        ''
-
-            fs.stat obj.location, (err, stats) ->
-                if err
-                    log.notice "Error reading file #{obj.location}, setting file size to 0."
-                    item.filesize = 0
-                else
-                    item.filesize = stats.size
-                callback null, item
-        
         # Insert root element and then iterate through its children and insert them.
-        buildObject media, null, (err, object) =>
-            @insertContent parentID, object, (err, id) =>
-                # Call back with "top-most" ID as soon as we know it.
-                callback err, id
-                buildChildren id, media
+        buildObject media, (err, object) =>
+            console.log object
+            @insertContent parentID, object, callback
 
-        buildChildren = (parentID, parent) =>
-            parent.children ?= []
-            for child in parent.children
-                buildObject child, parent, (err, object) =>
-                    @insertContent parentID, object, (err, childID) ->
-                        buildChildren childID, child
 
     # Add object to Redis data store.
     insertContent: (parentID, object, callback) ->
-        uuid = @device.uuid
-        type = /object\.(\w+)/.exec(object.class)[1]
         # Increment and return Object ID.
-        @redis.incr "#{uuid}:nextid", (err, id) =>
+        @redis.incr 'nextid', (err, id) =>
             # Add Object ID to parent containers's child set.
-            @redis.sadd "#{uuid}:#{parentID}:children", id
+            @redis.sadd "#{parentID}:children", id
             # Increment each time container (or parent container) is modified.
-            @redis.incr "#{uuid}:#{if type is 'container' then id else parentID}:updateid"
+            @redis.incr "#{if object.type is 'container' then id else parentID}:updateid"
             # Add ID's to item data structure and insert into data store.
             object.id = id
             object.parentid = parentID
-            @redis.hmset "#{uuid}:#{id}", object
+            @redis.hmset "#{id}", object
             callback err, id
 
     # Remove object with @id and all its children.
     removeContent: (id, callback) ->
-        uuid = @device.uuid
-        @redis.smembers "#{uuid}:#{id}:children", (err, childIds) =>
+        @redis.smembers "#{id}:children", (err, childIds) =>
             return callback new SoapError 501 if err?
             for childId in childIds
-                @redis.del "#{uuid}:#{childId}"
-            @redis.del [ "#{uuid}:#{id}", "#{uuid}:#{id}:children", "#{uuid}:#{id}:updateid" ]
+                @redis.del "#{childId}"
+            @redis.del [ "#{id}", "#{id}:children", "#{id}:updateid" ]
             # Return value shouldn't matter to client, at least for now.
             # If the smembers call worked at least we know the db is working.
             callback null
 
     # Get metadata of all direct children of object with @id.
     fetchChildren: (id, callback) ->
-        uuid = @device.uuid
-        @redis.smembers "#{uuid}:#{id}:children", (err, childIds) =>
+        @redis.smembers "#{id}:children", (err, childIds) =>
             return callback new SoapError 501 if err?
             return callback new SoapError 701 unless childIds.length
             async.concat(
                 childIds
-                (cId, callback) => @redis.hgetall "#{uuid}:#{cId}", callback
+                (cId, callback) => @redis.hgetall "#{cId}", callback
                 (err, results) ->
                     callback err, results
             )
 
     # Get metadata of object with @id.
     fetchObject: (id, callback) ->
-        uuid = @device.uuid
-        @redis.hgetall "#{uuid}:#{id}", (err, object) ->
+        @redis.hgetall "#{id}", (err, object) ->
             return callback new SoapError 501 if err?
             return callback new SoapError 701 unless Object.keys(object).length > 0
             callback null, object
 
     getUpdateId: (id, callback) ->
-        uuid = @device.uuid
         getId = (id, callback) =>
-            @redis.get "#{uuid}:#{id}:updateid", (err, updateId) ->
+            @redis.get "#{id}:updateid", (err, updateId) ->
                 return callback new SoapError 501 if err?
                 callback null, updateId
 
         if id is 0
             return callback null, @stateVars.SystemUpdateID.value
         else
-            @redis.exists "#{uuid}:#{id}:updateid", (err, exists) =>
+            @redis.exists "#{id}:updateid", (err, exists) =>
                 # If this ID doesn't have an updateid key, get parent's updateid.
                 if exists is 1
                     getId id, callback
                 else
-                    @redis.hget "#{uuid}:#{id}", 'parentid', (err, parentId) =>
+                    @redis.hget "#{id}", 'parentid', (err, parentId) =>
                         getId parentId, callback
 
 module.exports = ContentDirectory
