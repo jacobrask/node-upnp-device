@@ -1,4 +1,4 @@
-# UPnP Devices in Node.js
+# UPnP Devices for Node.js
 
 upnp-device lets you create [UPnP Devices][upnp-dcp] in Node.js. The goal is to have an easy to use API, rather than exposing all UPnP internals.
 
@@ -12,11 +12,9 @@ upnp-device lets you create [UPnP Devices][upnp-dcp] in Node.js. The goal is to 
 
 # Install
 
-upnp-device is not ready for npm yet, so you need to install manually by cloning this repository.
+`npm install upnp-device`
 
-Node 0.4.12 is recommended. upnp-device is ___not___ compatible with Node 0.6.x due to some missing UDP features in 0.6.x. They are expected to be implemented fairly soon, and then upnp-device will be ported to 0.6.x.
-
-Additionally, to use the MediaServer device you need to install [redis](http://redis.io).
+Note that you need Node 0.4.12. upnp-device is ___not___ compatible with Node 0.6.x due to some missing UDP features in 0.6.x. They are expected to be implemented fairly soon, and then upnp-device will be ported to 0.6.x.
 
 
 # Documentation
@@ -68,19 +66,24 @@ The metadata needs to be extracted by the client, either through user input or b
 
 ```
 container = {
-    class: 'object.container.album.musicAlbum',
-    title: 'My album' };
+    'class': 'object.container.album.musicAlbum',
+    'title': 'My album'
+};
+```
+
+```
 item = {
-    class: 'object.container.audioItem.musicTrack',
-    title: 'My song',
-    creator: 'An artist',
-    location: '/media/mp3/an_artist-my_song.mp3',
-    album: 'My album' };
+    'class': 'object.container.audioItem.musicTrack',
+    'title': 'My song',
+    'creator': 'An artist',
+    'location': '/media/mp3/an_artist-my_song.mp3',
+    'album': 'My album'
+};
 ```
 
 Other official UPnP classes and properties are defined in the [MediaServer specification][upnp-av].
 
-The server only stores this info for as long as it is running. It is the responsibility of the client to store media information across restarts if desired.
+The server only stores the media info for as long as it is running. It is the responsibility of the client to store media information across restarts if desired.
 
 
 # Development
