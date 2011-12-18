@@ -1,59 +1,50 @@
-# Shared functions specified by [UPnP Device Control Protocol] [1], for
-# both Devices and Services.
+# Properties and functionality as specified in [UPnP Device Architecture 1.0] [1].
 #
-# [1]: http://upnp.org/index.php/sdcps-and-certification/standards/sdcps/
+# [1]: http://upnp.org/sdcps-and-certification/standards/device-architecture-documents/
 
-{EventEmitter} = require 'events'
+"use strict"
+
+async = require 'async'
 http = require 'http'
 os = require 'os'
 url = require 'url'
 
-class DeviceControlProtocol extends EventEmitter
+DeviceControlProtocol = require './DeviceControlProtocol'
+helpers = require './helpers'
+httpServer = require './httpServer'
+ssdp = require './ssdp'
 
-    constructor: ->
+services =
+    ConnectionManager: require './services/ConnectionManager'
+    ContentDirectory: require './services/ContentDirectory'
 
-    schema:
-        prefix: 'urn:schemas-upnp-org'
-        version: '1.0'
-    upnp:
-        version: '1.0'
-    ssdp:
-        address: '239.255.255.250'
-        port: 1900
+class Device extends DeviceControlProtocol
 
-    # Make namespace string for services, devices, events, etc.
-    makeNS: (category, suffix = '') ->
-        category ?= if @device? then 'service' else 'device'
-        @schema.prefix + ':' + [
-            category
-            @schema.version.split('.')[0]
-            @schema.version.split('.')[1] ].join('-') + suffix
+    constructor: (@name, address) ->
+        super
+        @address = address if address?
 
-    # Make device/service type string for descriptions and SSDP messages.
-    makeType: ->
-        category ?= if @device? then 'service' else 'device'
-        [ @schema.prefix
-            category
-            @type
-            @version or @device.version
-        ].join ':'
+    ssdp: { address: '239.255.255.250', port: 1900 }
 
-    # Generate an HTTP header object for HTTP and SSDP messages.
-    makeHeaders: (customHeaders) ->
-        # Headers which always have the same values (if included).
-        defaultHeaders =
-            'cache-control': "max-age=1800"
-            'content-type': 'text/xml; charset="utf-8"'
-            ext: ''
-            host: "#{@ssdp.address}:#{@ssdp.port}"
-            location: @makeDescriptionUrl()
-            server: @makeServerString()
-            usn: @uuid + (if @uuid is (customHeaders.nt or customHeaders.st) then '' else '::' + (customHeaders.nt or customHeaders.st))
+    # Asynchronous operations to get and set some device properties.
+    init: (callback) ->
+        async.parallel
+            uuid: (callback) => helpers.getUuid @type, @name, callback
+            address: (callback) =>
+                return callback null, @address if @address?
+                helpers.getNetworkIP callback
+            port: (callback) => httpServer.start.call @, callback
+            (err, res) =>
+                return device.emit 'error', err if err?
+                @uuid = "uuid:#{res.uuid}"
+                @address = res.address
+                @httpPort = res.port
+                ssdp.start.call @
+                @emit 'ready'
 
-        headers = {}
-        for header of customHeaders
-            headers[header.toUpperCase()] = customHeaders[header] or defaultHeaders[header.toLowerCase()]
-        headers
+    addService: (type) ->
+        (@services?={})[type] = new services[type](@)
+        @emit 'newService', type
 
     # Generate HTTP header suiting the SSDP message type.
     makeSSDPMessage: (reqType, customHeaders) ->
@@ -91,9 +82,26 @@ class DeviceControlProtocol extends EventEmitter
             "#{@name}/1.0"
         ].join ' '
 
+    # Generate an HTTP header object for HTTP and SSDP messages.
+    makeHeaders: (customHeaders) ->
+        # Headers which always have the same values (if included).
+        defaultHeaders =
+            'cache-control': "max-age=1800"
+            'content-type': 'text/xml; charset="utf-8"'
+            ext: ''
+            host: "#{@ssdp.address}:#{@ssdp.port}"
+            location: @makeDescriptionUrl()
+            server: @makeServerString()
+            usn: @uuid + (if @uuid is (customHeaders.nt or customHeaders.st) then '' else '::' + (customHeaders.nt or customHeaders.st))
+
+        headers = {}
+        for header of customHeaders
+            headers[header.toUpperCase()] = customHeaders[header] or defaultHeaders[header.toLowerCase()]
+        headers
+
     postEvent: (urls, uuid, eventKey, data) ->
         for u in urls
-            u = url.parse(u)
+            u = url.parse u
             h =
                 nt: 'upnp:event'
                 nts: 'upnp:propchange'
@@ -132,15 +140,14 @@ class DeviceControlProtocol extends EventEmitter
         parser.execute msg, 0, msg.length
 
     # URL generation.
-    makeDeviceUrl: (path) ->
+    makeUrl: (path) ->
         url.format
             protocol: 'http'
-            hostname: @address or @device?.address
-            port: @httpPort or @device?.httpPort
+            hostname: @address
+            port: @httpPort
             pathname: path
 
-    makeDescriptionUrl: -> @makeDeviceUrl '/device/description'
-    makeContentUrl: (id) -> @makeDeviceUrl "/resource/#{id}"
+    makeDescriptionUrl: -> @makeUrl '/device/description'
+    makeContentUrl: (id) -> @makeUrl "/resource/#{id}"
 
-module.exports = DeviceControlProtocol
-
+module.exports = Device

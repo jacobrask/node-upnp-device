@@ -2,14 +2,7 @@
 
 "use strict"
 
-async = require 'async'
-
-httpServer = require './httpServer'
-helpers = require './helpers'
-ssdp = require './ssdp'
-DeviceControlProtocol = require './protocol'
-utils = require './utils'
-xml = require './xml'
+Device = require './Device'
 
 exports.createDevice = (reqType, name, address) ->
     type = reqType.toLowerCase()
@@ -18,37 +11,6 @@ exports.createDevice = (reqType, name, address) ->
         device.emit 'error', new Error "UPnP device of type #{type} is not yet implemented."
         return device
     new devices[type](name, address)
-
-
-class Device extends DeviceControlProtocol
-
-    constructor: (@name, address) ->
-        super
-        @address = address if address?
-
-    # Asynchronous operations to get and set some device properties.
-    init: (callback) ->
-        async.parallel
-            uuid: (callback) => helpers.getUuid @type, @name, callback
-            address: (callback) =>
-                return callback null, @address if @address?
-                helpers.getNetworkIP callback
-            port: (callback) => httpServer.start.call @, callback
-            (err, res) =>
-                return device.emit 'error', err if err?
-                @uuid = "uuid:#{res.uuid}"
-                @address = res.address
-                @httpPort = res.port
-                ssdp.start.call @
-                @emit 'ready'
-
-    addService: (type) ->
-        (@services?={})[type] = new services[type](@)
-        @emit 'newService', type
-
-services =
-    ConnectionManager: require './services/ConnectionManager'
-    ContentDirectory: require './services/ContentDirectory'
 
 
 class MediaServer extends Device

@@ -5,10 +5,8 @@ http = require 'http'
 log = new (require 'log')
 url = require 'url'
 
-
 {HttpError,ContextError} = require './errors'
 helpers = require './helpers'
-protocol = require './protocol'
 xml = require './xml'
 
 # HTTP servers are device specific, so `@` should be bound to a device.
@@ -37,8 +35,7 @@ exports.start = (callback) ->
                     headers['Content-Type'] ?= null
                     headers['Content-Length'] ?= Buffer.byteLength(data)
 
-
-                res.writeHead 200, protocol.makeHeaders.call(@, headers)
+                res.writeHead 200, @makeHeaders headers
                 res.write data if data?
 
             res.end()
