@@ -3,11 +3,13 @@
 "use strict"
 
 async = require 'async'
-{EventEmitter} = require 'events'
 
 httpServer = require './httpServer'
 helpers = require './helpers'
 ssdp = require './ssdp'
+DeviceControlProtocol = require './protocol'
+utils = require './utils'
+xml = require './xml'
 
 exports.createDevice = (reqType, name, address) ->
     type = reqType.toLowerCase()
@@ -18,13 +20,11 @@ exports.createDevice = (reqType, name, address) ->
     new devices[type](name, address)
 
 
-class Device extends EventEmitter
+class Device extends DeviceControlProtocol
 
     constructor: (@name, address) ->
+        super
         @address = address if address?
-        @schemaPrefix = 'urn:schemas-upnp-org'
-        @schemaVersion = '1.0'
-        @upnpVersion = '1.0'
 
     # Asynchronous operations to get and set some device properties.
     init: (callback) ->
@@ -54,10 +54,11 @@ services =
 class MediaServer extends Device
     constructor: ->
         super
-        @type = 'MediaServer'
-        @version = 1
         @addService type for type in ['ConnectionManager','ContentDirectory']
         @init()
+
+    type: 'MediaServer'
+    version: 1
 
     addMedia: ->
         @services.ContentDirectory.addMedia arguments...

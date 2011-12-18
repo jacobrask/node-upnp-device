@@ -1,18 +1,17 @@
-# SSDP server/client. Messages use HTTP and are generated in the `protocol` module.
+# SSDP server/client. Messages use HTTP and are defined in the
+# DeviceControlProtocol class.
 
 async = require 'async'
 dgram = require 'dgram'
 log = new (require 'log')
 os = require 'os'
 
-protocol = require './protocol'
-
 # `@` should be bound to a Device.
 exports.start = ->
-    listen = ->
-        socket = dgram.createSocket 'udp4', (msg, rinfo) ->
+    listen = =>
+        socket = dgram.createSocket 'udp4', (msg, rinfo) =>
             # Message listener.
-            protocol.parseRequest msg, rinfo, (err, req) ->
+            @parseRequest msg, rinfo, (err, req) ->
                 if req.method is 'M-SEARCH' and shouldRespond(req.searchType)
                     answerAfter req.maxWait, req.address, req.port
         socket.setMulticastTTL 4
@@ -31,7 +30,7 @@ exports.start = ->
         searchType in [
             'ssdp:all'
             'upnp:rootdevice'
-             protocol.makeType.call @
+             @makeType()
              @uuid ]
 
     # Create a UDP socket, send messages, then close socket.
@@ -60,16 +59,16 @@ exports.start = ->
     # Possible subtypes are 'alive' or 'byebye'.
     notify = (subtype) =>
         sendMessages(
-            protocol.makeSSDPMessage.call(@, 'notify',
+            @makeSSDPMessage('notify',
                 nt: nt, nts: "ssdp:#{subtype}", host: null
-            ) for nt in protocol.makeNotificationTypes.call @
+            ) for nt in @makeNotificationTypes()
         )
 
     answer = (address, port) =>
         sendMessages(
-            protocol.makeSSDPMessage.call(@, 'ok',
+            @makeSSDPMessage('ok',
                 st: st, ext: null
-            ) for st in protocol.makeNotificationTypes.call @
+            ) for st in @makeNotificationTypes()
             address
             port
         )

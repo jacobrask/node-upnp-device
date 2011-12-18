@@ -2,9 +2,9 @@
 
 fs = require 'fs'
 http = require 'http'
+log = new (require 'log')
 url = require 'url'
 
-log = new (require 'log')
 
 {HttpError,ContextError} = require './errors'
 helpers = require './helpers'
@@ -13,7 +13,6 @@ xml = require './xml'
 
 # HTTP servers are device specific, so `@` should be bound to a device.
 exports.start = (callback) ->
-    # Wrong `this` value.
     return callback new ContextError if @start? or @ is global
 
     # ## Request listener.
@@ -104,7 +103,7 @@ exports.start = (callback) ->
             when 'device'
                 if action isnt 'description'
                     return callback new HttpError 404
-                callback null, xml.buildDescription.call @
+                callback null, @buildDescription()
 
             when 'service'
                 switch action
