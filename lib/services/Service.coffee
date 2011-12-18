@@ -3,16 +3,15 @@
 
 "use strict"
 
-{EventEmitter} = require 'events'
 log = new (require 'log')
-makeUuid = require 'node-uuid'
+uuid = require 'node-uuid'
 {Parser:XmlParser} = require 'xml2js'
 
+DeviceControlProtocol = require '../DeviceControlProtocol'
 {SoapError} = require '../errors'
-protocol = require '../protocol'
-xml = require '../xml'
 
-class Service extends EventEmitter
+
+class Service extends DeviceControlProtocol
 
     constructor: (@device) ->
 
@@ -21,45 +20,135 @@ class Service extends EventEmitter
         (new XmlParser).parseString data, (err, data) =>
             @actionHandler action, data['s:Body']["u:#{action}"], callback
 
-    # Event subscriptions.
-    subscribe: (cbUrls, reqTimeout) ->
-        uuid = "uuid:#{makeUuid()}"
-        (@subs?={})[uuid] = new Subscription uuid, cbUrls, @
-        timeout = @subs[uuid].selfDestruct reqTimeout
-        log.debug "Added new subscription for #{@type} with #{uuid}, expiring in #{timeout}s."
-        sid: uuid, timeout: "Second-#{timeout}"
 
-    renew: (uuid, reqTimeout) ->
-        unless @subs[uuid]?
+    # Event subscriptions.
+    subscribe: (urls, reqTimeout) ->
+        sid = "uuid:#{uuid()}"
+        (@subs?={})[sid] = new Subscription sid, urls, @
+        timeout = @subs[sid].selfDestruct reqTimeout
+        log.debug "Added new subscription for #{@type} with #{sid}, expiring in #{timeout}s."
+        { sid, timeout: "Second-#{timeout}" }
+
+    renew: (sid, reqTimeout) ->
+        unless @subs[sid]?
             log.warning "Got subscription renewal request but could not find device #{sid}."
             return null
-        timeout = @subs[uuid].selfDestruct reqTimeout
-        log.debug "Renewing subscription #{uuid}, expiring in #{timeout}s."
-        sid: uuid, timeout: "Second-#{timeout}"
+        timeout = @subs[sid].selfDestruct reqTimeout
+        log.debug "Renewing subscription #{sid}, expiring in #{timeout}s."
+        { sid, timeout: "Second-#{timeout}" }
 
-    unsubscribe: (uuid) ->
-        log.debug "Deleting subscription #{uuid}."
-        delete @subs[uuid] if @subs[uuid]?
+    unsubscribe: (sid) ->
+        log.debug "Deleting subscription #{sid}."
+        delete @subs[sid] if @subs[sid]?
+
 
     # For optional actions not (yet) implemented.
-    optionalAction: (callback) -> callback null, @buildSoapError new SoapError(602)
+    optionalAction: (callback) -> callback null, @buildSoapError new SoapError 602
+
 
     # Service actions that only return a State Variable.
     getStateVar: (action, elName, callback) ->
         # Actions start with 'Get' followed by variable name.
         varName = /^(Get)?(\w+)$/.exec(action)[2]
-        unless varName of @stateVars
-            return @buildSoapError new SoapError(404)
+        return @buildSoapError new SoapError(404) unless varName of @stateVars
         (el={})[elName] = @stateVars[varName].value
         callback null, @buildSoapResponse action, el
 
-    # Notify all subscribers of updated state variables.
-    notify: -> do @subs[uuid].notify for uuid of @subs
 
-    buildSoapResponse: -> xml.buildSoapResponse.call @device, arguments...
-    buildSoapError: -> xml.buildSoapError.call @device, arguments...
-    buildEvent: -> xml.buildEvent.call @device, arguments...
-    buildDidl: -> xml.buildDidl.call @device, arguments...
+    # Notify all subscribers of updated state variables.
+    notify: -> @subs[uuid].notify() for uuid of @subs
+
+
+    # Build a SOAP response XML document.
+    buildSoapResponse: (action, args) ->
+        # Create an action element.
+        (body={})["u:#{action}Response"] = utils.objectToArray args,
+            [ _attr: { 'xmlns:u': @makeType() } ]
+
+        '<?xml version="1.0"?>' + xml [ 's:Envelope': utils.objectToArray(
+            _attr:
+                'xmlns:s': 'http://schemas.xmlsoap.org/soap/envelope/'
+                's:encodingStyle': 'http://schemas.xmlsoap.org/soap/encoding/'
+            's:Body': [ body ] ) ]
+
+
+    # Build a SOAP error XML document.
+    buildSoapError: (error) ->
+        '<?xml version="1.0"?>' + xml [ 's:Envelope': utils.objectToArray(
+            _attr:
+                'xmlns:s': 'http://schemas.xmlsoap.org/soap/envelope/'
+                's:encodingStyle': 'http://schemas.xmlsoap.org/soap/encoding/'
+            's:Body': [
+                's:Fault': utils.objectToArray(
+                    faultcode: 's:Client'
+                    faultstring: 'UPnPError'
+                    detail: [ 'UPnPError': utils.objectToArray(
+                        _attr: 'xmlns:e': @makeNS 'control'
+                        errorCode: error.code
+                        errorDescription: error.message ) ]
+                ) ]
+        ) ]
+
+
+    # Build an event notification XML document.
+    buildEvent: (vars) ->
+        '<?xml version="1.0"?>' + xml [ 'e:propertyset': utils.objectToArray(
+            _attr: 'xmlns:e': @makeNS 'event'
+            'e:property': utils.objectToArray vars
+        ) ]
+
+
+    # Build a DIDL XML structure for items/containers in the MediaServer device.
+    buildDidl: (data) ->
+        # Build an array of elements contained in an object element.
+        buildObject = (obj) =>
+            el = []
+            el.push {
+                _attr:
+                    id: obj.id
+                    parentID: obj.parentid
+                    restricted: 'true'
+            }
+            el.push 'dc:title': obj.title
+            el.push 'upnp:class': obj.class
+            if obj.creator?
+                el.push 'dc:creator': obj.creator
+                el.push 'upnp:artist': obj.creator
+            if obj.location?
+                el.push 'res': [
+                    _attr:
+                        protocolInfo: "http-get:*:#{obj.contenttype}:*"
+                        size: obj.filesize
+                    @makeContentUrl obj.id ]
+            el
+
+        ((body={})['DIDL-Lite']=[]).push
+            _attr:
+                'xmlns': @makeNS 'metadata', '/DIDL-Lite/'
+                'xmlns:dc': 'http://purl.org/dc/elements/1.1/'
+                'xmlns:upnp': @makeNS 'metadata', '/upnp/'
+        for object in data
+            type = /object\.(\w+)/.exec(object.class)[1]
+            o = {}
+            o[type] = buildObject object
+            body['DIDL-Lite'].push o
+
+        xml [ body ]
+
+
+    # Build `service` element.
+    buildServiceElement: ->
+        serviceType: @makeType()
+        serviceId: 'urn:upnp-org:serviceId:' + @type
+        SCPDURL: '/service/description/' + @type
+        controlURL: '/service/control/' + @type
+        eventSubURL: '/service/event/' + @type
+
+
+    # Serve service description.
+    buildDescription: (callback) ->
+        fs.readFile("#{__dirname}/services/#{@type}.xml", 'utf8', (err, file) ->
+            callback (if err? then new HttpError 500 else null), file)
 
 
 class Subscription
@@ -91,7 +180,8 @@ class Subscription
         for key, val of @service.stateVars when val.evented
             eventedVars[key] = val.value
         eventXML = @service.buildEvent eventedVars
-        protocol.postEvent.call @service.device, @callbackUrls, @uuid, @eventKey, eventXML
+        @postEvent.call @service.device, @callbackUrls, @uuid, @eventKey, eventXML
         @eventKey++
+
 
 module.exports = Service

@@ -7,7 +7,6 @@ url = require 'url'
 
 {HttpError,ContextError} = require './errors'
 helpers = require './helpers'
-xml = require './xml'
 
 # HTTP servers are device specific, so `@` should be bound to a device.
 exports.start = (callback) ->
@@ -62,7 +61,8 @@ exports.start = (callback) ->
                         callback err, soapResponse, ext: null
 
         serviceEventHandler = =>
-            log.debug "#{req.method} on #{serviceType} received from #{req.client.remoteAddress}."
+            service = @services[serviceType]
+            log.debug "#{req.method} on #{service.name} received from #{req.client.remoteAddress}."
             {sid, nt, timeout, callback: cbUrls} = req.headers
 
             switch req.method
@@ -72,12 +72,12 @@ exports.start = (callback) ->
                         # New subscription.
                         unless /<http/.test cbUrls
                             return callback new HttpError 412
-                        respHeaders = @services[serviceType].subscribe cbUrls.slice(1, -1), timeout
+                        respHeaders = service.subscribe cbUrls.slice(1, -1), timeout
                         callback null, null, respHeaders
                     else if sid? and not (nt? or cbUrls?)
                         # `sid` is subscription ID, so this is a subscription
                         # renewal request.
-                        respHeaders = @services[serviceType].renew sid, timeout
+                        respHeaders = service.renew sid, timeout
                         callback (if respHeaders? then null else new HttpError(412)), null, respHeaders
                     else
                         return callback new HttpError 400
@@ -87,7 +87,7 @@ exports.start = (callback) ->
                         return callback new HttpError 412
                     if nt? or cbUrls?
                         return callback new HttpError 400
-                    @services[serviceType].unsubscribe sid
+                    service.unsubscribe sid
                     # Unsubscription response is `200 OK`.
                     callback null
 
@@ -105,8 +105,7 @@ exports.start = (callback) ->
             when 'service'
                 switch action
                     when 'description'
-                        fs.readFile("#{__dirname}/services/#{serviceType}.xml", 'utf8'
-                            (err, file) -> callback (if err? then new HttpError 500 else null), file)
+                        callback null, service.buildDescription()
 
                     when 'control'
                         serviceControlHandler()

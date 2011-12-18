@@ -4,6 +4,7 @@
 # [1]: http://upnp.org/index.php/sdcps-and-certification/standards/sdcps/
 
 {EventEmitter} = require 'events'
+url = require 'url'
 
 class DeviceControlProtocol extends EventEmitter
 
@@ -29,5 +30,17 @@ class DeviceControlProtocol extends EventEmitter
             @version or @device.version
         ].join ':'
 
-module.exports = DeviceControlProtocol
 
+    # URL generation.
+    makeUrl: (path) ->
+        url.format
+            protocol: 'http'
+            hostname: @address
+            port: @httpPort
+            pathname: path
+
+    makeDescriptionUrl:  -> @makeUrl '/device/description'
+    makeContentUrl: (id) -> @makeUrl "/resource/#{id}"
+
+
+module.exports = DeviceControlProtocol
