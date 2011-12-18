@@ -13,15 +13,15 @@ url      = require 'url'
 makeUuid = require 'node-uuid'
 xml      = require 'xml'
 
-httpServer = require './httpServer'
-ssdp  = require './ssdp'
-utils = require './utils'
+httpServer = require '../httpServer'
+ssdp  = require '../ssdp'
+utils = require '../utils'
 
-DeviceControlProtocol = require './DeviceControlProtocol'
+DeviceControlProtocol = require '../DeviceControlProtocol'
 
 services =
-    ConnectionManager: require './services/ConnectionManager'
-    ContentDirectory:  require './services/ContentDirectory'
+    ConnectionManager: require '../services/ConnectionManager'
+    ContentDirectory:  require '../services/ContentDirectory'
 
 
 class Device extends DeviceControlProtocol
@@ -148,7 +148,7 @@ class Device extends DeviceControlProtocol
 
     # Attempt UUID persistance of devices across restarts.
     getUuid: (cb) ->
-        uuidFile = "#{__dirname}/../upnp-uuid"
+        uuidFile = "#{__dirname}/../../upnp-uuid"
         fs.readFile uuidFile, 'utf8', (err, file) =>
             uuid = utils.parseJSON(file)[@type]?[@name]
             unless uuid?

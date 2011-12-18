@@ -6,7 +6,6 @@ log = new (require 'log')
 url = require 'url'
 
 {HttpError,ContextError} = require './errors'
-helpers = require './helpers'
 
 # HTTP servers are device specific, so `@` should be bound to a device.
 exports.start = (callback) ->
