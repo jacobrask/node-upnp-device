@@ -42,25 +42,15 @@ exports.start = (callback) ->
     handler = (req, callback) =>
 
         # URLs are like `/device|service/action/[serviceType]`.
-        [category, action, serviceType] = req.url.split('/')[1..]
+        [category, serviceType, action, id] = req.url.split('/')[1..]
 
         switch category
 
             when 'device'
-                return callback new HttpError 404 unless action is 'description'
                 callback null, @buildDescription()
 
             when 'service'
-                @services[serviceType].requestHandler action, req, callback
-
-            when 'resource'
-                @services.ContentDirectory.fetchObject action, (err, object) ->
-                    return callback new HttpError 500 if err
-                    fs.readFile object.location, (err, file) ->
-                        return callback new HttpError 500 if err
-                        callback null, file,
-                            'Content-Type': object.contenttype
-                            'Content-Length': object.filesize
+                @services[serviceType].requestHandler { action, req, id }, callback
 
             else
                 callback new HttpError 404

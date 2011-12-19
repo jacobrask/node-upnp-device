@@ -3,13 +3,17 @@
 
 "use strict"
 
-log = new (require 'log')
+fs   = require 'fs'
+http = require 'http'
+log  = new (require 'log')
+url  = require 'url'
 uuid = require 'node-uuid'
+xml  = require 'xml'
 {Parser:XmlParser} = require 'xml2js'
 
 DeviceControlProtocol = require '../DeviceControlProtocol'
-{SoapError} = require '../errors'
-
+{HttpError,SoapError} = require '../errors'
+utils = require '../utils'
 
 class Service extends DeviceControlProtocol
 
@@ -93,67 +97,52 @@ class Service extends DeviceControlProtocol
 
     # Build an event notification XML document.
     buildEvent: (vars) ->
-        '<?xml version="1.0"?>' + xml [ 'e:propertyset': utils.objectToArray(
-            _attr: 'xmlns:e': @makeNS 'event'
-            'e:property': utils.objectToArray vars
-        ) ]
+        '<?xml version="1.0"?>' + xml [ 'e:propertyset': [
+            { _attr: 'xmlns:e': @makeNS 'event' }
+            { 'e:property': utils.objectToArray vars }
+        ] ]
 
 
-    # Build a DIDL XML structure for items/containers in the MediaServer device.
-    buildDidl: (data) ->
-        # Build an array of elements contained in an object element.
-        buildObject = (obj) =>
-            el = []
-            el.push {
-                _attr:
-                    id: obj.id
-                    parentID: obj.parentid
-                    restricted: 'true'
-            }
-            el.push 'dc:title': obj.title
-            el.push 'upnp:class': obj.class
-            if obj.creator?
-                el.push 'dc:creator': obj.creator
-                el.push 'upnp:artist': obj.creator
-            if obj.location?
-                el.push 'res': [
-                    _attr:
-                        protocolInfo: "http-get:*:#{obj.contenttype}:*"
-                        size: obj.filesize
-                    @makeContentUrl obj.id ]
-            el
-
-        ((body={})['DIDL-Lite']=[]).push
-            _attr:
-                'xmlns': @makeNS 'metadata', '/DIDL-Lite/'
-                'xmlns:dc': 'http://purl.org/dc/elements/1.1/'
-                'xmlns:upnp': @makeNS 'metadata', '/upnp/'
-        for object in data
-            type = /object\.(\w+)/.exec(object.class)[1]
-            o = {}
-            o[type] = buildObject object
-            body['DIDL-Lite'].push o
-
-        xml [ body ]
+    # Send HTTP request with event info to `urls`.
+    postEvent: (urls, sid, eventKey, data) ->
+        for eventUrl in urls
+            u = url.parse eventUrl
+            headers =
+                nt: 'upnp:event'
+                nts: 'upnp:propchange'
+                sid: sid
+                seq: eventKey.toString()
+                'content-length': Buffer.byteLength data
+                'content-type': null
+            options =
+                host: u.hostname
+                port: u.port
+                method: 'NOTIFY'
+                path: u.pathname
+                headers: @device.makeHeaders headers
+            req = http.request options
+            req.on 'error', (err) -> throw err
+            req.write data
+            req.end()
 
 
     # Build `service` element.
     buildServiceElement: ->
         [ { serviceType: @makeType() }
-          { eventSubURL: '/service/event/' + @type }
-          { controlURL: '/service/control/' + @type }
-          { SCPDURL: '/service/description/' + @type }
-          { serviceId: 'urn:upnp-org:serviceId:' + @type } ]
+          { eventSubURL: "/service/#{@type}/event" }
+          { controlURL: "/service/#{@type}/control" }
+          { SCPDURL: "/service/#{@type}/description" }
+          { serviceId: "urn:upnp-org:serviceId:#{@type}" } ]
 
 
     # Handle service related HTTP requests.
-    requestHandler: (action, req, cb) ->
-        {method} = req
-
+    requestHandler: (args, cb) ->
+        { action, req } = args
+        { method } = req
         switch action
             when 'description'
                 # Service descriptions are static files.
-                fs.readFile("#{__dirname}/services/#{@type}.xml", 'utf8', (err, file) ->
+                fs.readFile("#{__dirname}/#{@type}.xml", 'utf8', (err, file) ->
                     cb (if err? then new HttpError 500 else null), file)
 
             when 'control'
@@ -225,7 +214,7 @@ class Subscription
         for key, val of @service.stateVars when val.evented
             eventedVars[key] = val.value
         eventXML = @service.buildEvent eventedVars
-        @postEvent.call @service.device, @urls, @uuid, @eventKey, eventXML
+        @service.postEvent @urls, @uuid, @eventKey, eventXML
         @eventKey++
 
 

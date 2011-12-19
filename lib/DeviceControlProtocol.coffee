@@ -25,7 +25,7 @@ class DeviceControlProtocol extends EventEmitter
 
     # Make device/service type string for descriptions and SSDP messages.
     makeType: ->
-        category ?= if @device? then 'service' else 'device'
+        category = if @device? then 'service' else 'device'
         [ @schema.prefix
             category
             @type
@@ -37,12 +37,11 @@ class DeviceControlProtocol extends EventEmitter
     makeUrl: (path) ->
         url.format
             protocol: 'http'
-            hostname: @address
-            port: @httpPort
+            hostname: @address or @device.address
+            port: @httpPort or @device.httpPort
             pathname: path
 
     makeDescriptionUrl:  -> @makeUrl '/device/description'
-    makeContentUrl: (id) -> @makeUrl "/resource/#{id}"
 
 
 module.exports = DeviceControlProtocol

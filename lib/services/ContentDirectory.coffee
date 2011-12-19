@@ -7,10 +7,11 @@ fs    = require 'fs'
 log   = new (require 'log')
 mime  = require 'mime'
 redis = require 'redis'
+xml   = require 'xml'
 mime.define 'audio/flac': ['flac']
 
 Service = require './Service'
-{SoapError} = require '../errors'
+{HttpError,SoapError} = require '../errors'
 
 # Capitalized properties are native UPnP control actions.
 class ContentDirectory extends Service
@@ -113,7 +114,7 @@ class ContentDirectory extends Service
         buildObject = (object, callback) =>
             object.type = /object\.(\w+)/.exec(object.class)[1]
             if object.type is 'item' and object.location?
-                object.contenttype ?= mime.lookup(object.location)
+                object.contenttype ?= mime.lookup object.location
                 @addContentType object.contenttype
 
             fs.stat object.location, (err, stats) ->
@@ -185,5 +186,56 @@ class ContentDirectory extends Service
                 else
                     @redis.hget "#{id}", 'parentid', (err, parentId) =>
                         getId parentId, callback
+
+
+    # Handle HTTP request if it's a resource request, otherwise pass  to super.
+    requestHandler: (args, callback) ->
+        { action, id } = args
+        return super(arguments...) unless action is 'resource'
+        @fetchObject id, (err, object) ->
+            return callback new HttpError 500 if err?
+            fs.readFile object.location, (err, file) ->
+                return callback new HttpError 500 if err?
+                callback null, file,
+                    'Content-Type': object.contenttype
+                    'Content-Length': object.filesize
+
+
+    # Build a DIDL XML structure for items/containers in the MediaServer device.
+    buildDidl: (data) ->
+        # Build an array of elements contained in an object element.
+        buildObject = (obj) =>
+            el = []
+            el.push {
+                _attr:
+                    id: obj.id
+                    parentID: obj.parentid
+                    restricted: 'true'
+            }
+            el.push 'dc:title': obj.title
+            el.push 'upnp:class': obj.class
+            if obj.creator?
+                el.push 'dc:creator': obj.creator
+                el.push 'upnp:artist': obj.creator
+            if obj.location? and obj.contenttype?
+                el.push 'res': [
+                    _attr:
+                        protocolInfo: "http-get:*:#{obj.contenttype}:*"
+                        size: obj.filesize
+                    @makeUrl "/service/#{@type}/resource/#{obj.id}" ]
+            el
+
+        ((body={})['DIDL-Lite']=[]).push
+            _attr:
+                'xmlns': @makeNS 'metadata', '/DIDL-Lite/'
+                'xmlns:dc': 'http://purl.org/dc/elements/1.1/'
+                'xmlns:upnp': @makeNS 'metadata', '/upnp/'
+        for object in data
+            type = /object\.(\w+)/.exec(object.class)[1]
+            o = {}
+            o[type] = buildObject object
+            body['DIDL-Lite'].push o
+
+        xml [ body ]
 
 module.exports = ContentDirectory

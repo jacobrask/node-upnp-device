@@ -9,7 +9,6 @@ async    = require 'async'
 fs       = require 'fs'
 http     = require 'http'
 os       = require 'os'
-url      = require 'url'
 makeUuid = require 'node-uuid'
 xml      = require 'xml'
 
@@ -68,7 +67,7 @@ class Device extends DeviceControlProtocol
     # Make `nt`'s for 3 messages about the device, and 1 for each service.
     makeNotificationTypes: ->
         [ 'upnp:rootdevice', @uuid, @makeType() ]
-            .concat(@makeType s for name, s of @services)
+            .concat(@makeType.call service for name, service of @services)
 
 
     # Generate an HTTP header object for HTTP and SSDP messages.
@@ -92,29 +91,6 @@ class Device extends DeviceControlProtocol
         for header of customHeaders
             headers[header.toUpperCase()] = customHeaders[header] or defaultHeaders[header.toLowerCase()]
         headers
-
-
-    # Send HTTP request with event info to `urls`.
-    postEvent: (urls, sid, eventKey, data) ->
-        for u in urls
-            u = url.parse u
-            h =
-                nt: 'upnp:event'
-                nts: 'upnp:propchange'
-                sid: sid
-                seq: eventKey.toString()
-                'content-length': Buffer.byteLength data
-                'content-type': null
-            options =
-                host: u.hostname
-                port: u.port
-                method: 'NOTIFY'
-                path: u.pathname
-                headers: makeHeaders h
-            req = http.request options
-            req.on 'error', (err) -> throw err
-            req.write data
-            req.end()
 
 
     # Parse SSDP headers using the HTTP module parser.
