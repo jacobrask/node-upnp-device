@@ -1,9 +1,9 @@
 # HTTP server for descriptions, actions and controls.
 
-fs = require 'fs'
+fs   = require 'fs'
 http = require 'http'
-log = new (require 'log')
-url = require 'url'
+log  = new (require 'log')
+url  = require 'url'
 
 {HttpError,ContextError} = require './errors'
 
@@ -42,6 +42,7 @@ exports.start = (callback) ->
 
         # URLs are like `/device|service/action/[serviceType]`.
         [category, action, serviceType] = req.url.split('/')[1..]
+        service = @services[serviceType]
 
         serviceControlHandler = =>
             # Service control messages are `POST` requests.
@@ -54,14 +55,13 @@ exports.start = (callback) ->
             req.on 'end', =>
                 # `soapaction` header is like `urn:schemas-upnp-org:service:serviceType:v#actionName`
                 serviceAction = /:\d#(\w+)"$/.exec(req.headers.soapaction)[1]
-                log.debug "#{serviceAction} on #{serviceType} invoked by #{req.client.remoteAddress}."
-                @services[serviceType].action serviceAction, data,
+                log.debug "#{serviceAction} on #{service.type} invoked by #{req.client.remoteAddress}."
+                service.action serviceAction, data,
                     (err, soapResponse) ->
                         callback err, soapResponse, ext: null
 
         serviceEventHandler = =>
-            service = @services[serviceType]
-            log.debug "#{req.method} on #{service.name} received from #{req.client.remoteAddress}."
+            log.debug "#{req.method} on #{service.type} received from #{req.client.remoteAddress}."
             {sid, nt, timeout, callback: cbUrls} = req.headers
 
             switch req.method

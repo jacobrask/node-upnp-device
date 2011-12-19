@@ -6,11 +6,17 @@
 
 Device = require './Device'
 
+services =
+    ConnectionManager: require '../services/ConnectionManager'
+    ContentDirectory:  require '../services/ContentDirectory'
+
 class MediaServer extends Device
 
     constructor: ->
         super
-        @addService type for type in [ 'ConnectionManager', 'ContentDirectory' ]
+        for type, service of services
+            @services[type] = new service @
+            @emit 'newService', type
         @init()
 
     type: 'MediaServer'

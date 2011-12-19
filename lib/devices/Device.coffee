@@ -15,13 +15,8 @@ xml      = require 'xml'
 
 httpServer = require '../httpServer'
 ssdp  = require '../ssdp'
-utils = require '../utils'
 
 DeviceControlProtocol = require '../DeviceControlProtocol'
-
-services =
-    ConnectionManager: require '../services/ConnectionManager'
-    ContentDirectory:  require '../services/ContentDirectory'
 
 
 class Device extends DeviceControlProtocol
@@ -31,17 +26,14 @@ class Device extends DeviceControlProtocol
         @address = address if address?
 
     ssdp: { address: '239.255.255.250', port: 1900 }
-
+    services: {}
 
     # Asynchronous operations to get and set some device properties.
     init: (cb) ->
         async.parallel
-            uuid: (cb) => @getUuid cb
-            address: (cb) =>
-                return cb null, @address if @address?
-                @getNetworkIP cb
-            port: (cb) =>
-                httpServer.start.call @, cb
+            address: (cb) => if @address? then cb null, @address else @getNetworkIP cb
+            uuid:    (cb) => @getUuid cb
+            port:    (cb) => httpServer.start.call @, cb
             (err, res) =>
                 return @emit 'error', err if err?
                 @uuid = "uuid:#{res.uuid}"
@@ -49,11 +41,6 @@ class Device extends DeviceControlProtocol
                 @httpPort = res.port
                 ssdp.start.call @
                 @emit 'ready'
-
-
-    addService: (type) ->
-        (@services?={})[type] = new services[type](@)
-        @emit 'newService', type
 
 
     # Generate HTTP header suiting the SSDP message type.
@@ -78,7 +65,7 @@ class Device extends DeviceControlProtocol
         new Buffer message.join '\r\n'
 
 
-    # 3 messages about the device, and 1 for each service.
+    # Make `nt`'s for 3 messages about the device, and 1 for each service.
     makeNotificationTypes: ->
         [ 'upnp:rootdevice', @uuid, @makeType() ]
             .concat(@makeType s for name, s of @services)
@@ -150,9 +137,13 @@ class Device extends DeviceControlProtocol
     getUuid: (cb) ->
         uuidFile = "#{__dirname}/../../upnp-uuid"
         fs.readFile uuidFile, 'utf8', (err, file) =>
-            uuid = utils.parseJSON(file)[@type]?[@name]
+            data =  try
+                        JSON.parse file
+                    catch e
+                        { }
+            uuid = data[@type]?[@name]
             unless uuid?
-                ((data={})[@type]={})[@name] = uuid = makeUuid()
+                (data[@type]?={})[@name] = uuid = makeUuid()
                 fs.writeFile uuidFile, JSON.stringify data
             # Always call back with UUID, existing or new.
             cb null, uuid
@@ -168,7 +159,7 @@ class Device extends DeviceControlProtocol
                 when 'linux'
                     filterRE = /\binet\b[^:]+:\s*([^\s]+)/g
                 else
-                    return null
+                    return cb new Error "Can't get IP address on this platform."
             isLocal = (address) -> /(127\.0\.0\.1|::1|fe80(:1)?::1(%.*)?)$/i.test address
             matches = stdout.match(filterRE) or ''
             ip = (match.replace(filterRE, '$1') for match in matches when !isLocal match)[0]
@@ -178,27 +169,20 @@ class Device extends DeviceControlProtocol
 
     # Build device description XML document.
     buildDescription: ->
+        '<?xml version="1.0"?>' + xml [ { root: [
+            { _attr: { xmlns: @makeNS() } }
+            { specVersion: [ { major: @upnp.version.split('.')[0] }
+                             { minor: @upnp.version.split('.')[1] } ] }
+            { device: [
+                { deviceType: @makeType() }
+                { friendlyName: "#{@name} @ #{os.hostname()}".substr 0, 64 }
+                { manufacturer: 'UPnP Device for Node.js' }
+                { modelName: @name.substr 0, 32 }
+                { UDN: @uuid }
+                { serviceList:
+                    { service: service.buildServiceElement() } for name, service of @services
+                } ] }
+        ] } ]
 
-        # Build `specVersion` element.
-        specVersion = (v) -> major: v.split('.')[0], minor: v.split('.')[1]
-
-        # Build an array of `service` elements.
-        buildServiceList = =>
-            for name, service of @services
-                { service: utils.objectToArray service.buildServiceElement() }
-
-        # Build `device` element.
-        buildDevice = =>
-            deviceType: @makeType()
-            friendlyName: "#{@name} @ #{os.hostname()}".substr(0, 64)
-            manufacturer: 'UPnP Device for Node.js'
-            modelName: @name.substr(0, 32)
-            UDN: @uuid
-            serviceList: buildServiceList @services
-
-        '<?xml version="1.0"?>' + xml [ root: [
-            { _attr: xmlns: @makeNS() }
-            { specVersion: utils.objectToArray specVersion @upnp.version }
-            { device: utils.objectToArray buildDevice() } ] ]
 
 module.exports = Device

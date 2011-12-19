@@ -2,8 +2,7 @@
 
 "use strict"
 
-devices =
-    mediaserver: require './devices/MediaServer'
+devices = mediaserver: require './devices/MediaServer'
 
 exports.createDevice = (reqType, name, address) ->
     type = reqType.toLowerCase()

@@ -138,11 +138,11 @@ class Service extends DeviceControlProtocol
 
     # Build `service` element.
     buildServiceElement: ->
-        serviceType: @makeType()
-        serviceId: 'urn:upnp-org:serviceId:' + @type
-        SCPDURL: '/service/description/' + @type
-        controlURL: '/service/control/' + @type
-        eventSubURL: '/service/event/' + @type
+        [ { serviceType: @makeType() }
+          { eventSubURL: '/service/event/' + @type }
+          { controlURL: '/service/control/' + @type }
+          { SCPDURL: '/service/description/' + @type }
+          { serviceId: 'urn:upnp-org:serviceId:' + @type } ]
 
 
     # Serve service description.

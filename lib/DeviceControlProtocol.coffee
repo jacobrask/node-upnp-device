@@ -6,6 +6,7 @@
 {EventEmitter} = require 'events'
 url = require 'url'
 
+
 class DeviceControlProtocol extends EventEmitter
 
     constructor: ->
@@ -20,6 +21,7 @@ class DeviceControlProtocol extends EventEmitter
             category
             @schema.version.split('.')[0]
             @schema.version.split('.')[1] ].join('-') + suffix
+
 
     # Make device/service type string for descriptions and SSDP messages.
     makeType: ->
