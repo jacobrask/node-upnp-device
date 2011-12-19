@@ -16,9 +16,9 @@ class Service extends DeviceControlProtocol
     constructor: (@device) ->
 
     # Control action. Most actions build a SOAP response and calls back.
-    action: (action, data, callback) ->
+    action: (action, data, cb) ->
         (new XmlParser).parseString data, (err, data) =>
-            @actionHandler action, data['s:Body']["u:#{action}"], callback
+            @actionHandler action, data['s:Body']["u:#{action}"], cb
 
 
     # Event subscriptions.
@@ -43,16 +43,16 @@ class Service extends DeviceControlProtocol
 
 
     # For optional actions not (yet) implemented.
-    optionalAction: (callback) -> callback null, @buildSoapError new SoapError 602
+    optionalAction: (cb) -> cb null, @buildSoapError new SoapError 602
 
 
     # Service actions that only return a State Variable.
-    getStateVar: (action, elName, callback) ->
+    getStateVar: (action, elName, cb) ->
         # Actions start with 'Get' followed by variable name.
         varName = /^(Get)?(\w+)$/.exec(action)[2]
         return @buildSoapError new SoapError(404) unless varName of @stateVars
         (el={})[elName] = @stateVars[varName].value
-        callback null, @buildSoapResponse action, el
+        cb null, @buildSoapResponse action, el
 
 
     # Notify all subscribers of updated state variables.
@@ -65,11 +65,12 @@ class Service extends DeviceControlProtocol
         (body={})["u:#{action}Response"] = utils.objectToArray args,
             [ _attr: { 'xmlns:u': @makeType() } ]
 
-        '<?xml version="1.0"?>' + xml [ 's:Envelope': utils.objectToArray(
-            _attr:
+        '<?xml version="1.0"?>' + xml [ 's:Envelope': [
+            { _attr: {
                 'xmlns:s': 'http://schemas.xmlsoap.org/soap/envelope/'
-                's:encodingStyle': 'http://schemas.xmlsoap.org/soap/encoding/'
-            's:Body': [ body ] ) ]
+                's:encodingStyle': 'http://schemas.xmlsoap.org/soap/encoding/' } }
+            { 's:Body': [ body ] }
+        ] ]
 
 
     # Build a SOAP error XML document.
@@ -145,17 +146,61 @@ class Service extends DeviceControlProtocol
           { serviceId: 'urn:upnp-org:serviceId:' + @type } ]
 
 
-    # Serve service description.
-    buildDescription: (callback) ->
-        fs.readFile("#{__dirname}/services/#{@type}.xml", 'utf8', (err, file) ->
-            callback (if err? then new HttpError 500 else null), file)
+    # Handle service related HTTP requests.
+    requestHandler: (action, req, cb) ->
+        {method} = req
+
+        switch action
+            when 'description'
+                # Service descriptions are static files.
+                fs.readFile("#{__dirname}/services/#{@type}.xml", 'utf8', (err, file) ->
+                    cb (if err? then new HttpError 500 else null), file)
+
+            when 'control'
+                serviceAction = /:\d#(\w+)"$/.exec(req.headers.soapaction)?[1]
+                log.debug "#{serviceAction} on #{@type} invoked by #{req.client.remoteAddress}."
+                # Service control messages are `POST` requests.
+                return cb new HttpError 405 if method isnt 'POST' or not serviceAction?
+                data = ''
+                req.on 'data', (chunk) -> data += chunk
+                req.on 'end', =>
+                    @action serviceAction, data, (err, soapResponse) ->
+                        cb err, soapResponse, ext: null
+
+            when 'event'
+                {sid, timeout, callback: urls} = req.headers
+                log.debug "#{method} on #{@type} received from #{req.client.remoteAddress}."
+                if method is 'SUBSCRIBE'
+                    if urls?
+                        # New subscription.
+                        err = new HttpError(412) unless /<http/.test urls
+                        resp = @subscribe urls.slice(1, -1), timeout
+                    else if sid?
+                        # `sid` is subscription ID, so this is a renewal request.
+                        resp = @renew sid, timeout
+                    else
+                        err = new HttpError 400
+                    err ?= new HttpError(412) unless resp?
+                    cb err, null, resp
+
+                else if method is 'UNSUBSCRIBE'
+                    @unsubscribe sid if sid?
+                    # Unsubscription response is simply `200 OK`.
+                    cb (if sid? then null else new HttpError 412)
+
+                else
+                    cb new HttpError 405
+
+            else
+                callback new HttpError 404
+
 
 
 class Subscription
     constructor: (@uuid, urls, @service) ->
         @eventKey = 0
         @minTimeout = 1800
-        @callbackUrls = urls.split ','
+        @urls = urls.split ','
         @notify()
 
     selfDestruct: (timeout) ->
@@ -175,12 +220,12 @@ class Subscription
     notify: ->
         # Specification states that all variables are sent out to all clients
         # even if only one variable changed.
-        log.debug "Sending out event for current state variables to #{@callbackUrls}"
+        log.debug "Sending out event for current state variables to #{@urls}"
         eventedVars = {}
         for key, val of @service.stateVars when val.evented
             eventedVars[key] = val.value
         eventXML = @service.buildEvent eventedVars
-        @postEvent.call @service.device, @callbackUrls, @uuid, @eventKey, eventXML
+        @postEvent.call @service.device, @urls, @uuid, @eventKey, eventXML
         @eventKey++
 
 

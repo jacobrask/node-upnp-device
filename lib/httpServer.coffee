@@ -38,82 +38,20 @@ exports.start = (callback) ->
 
             res.end()
 
+    # ## Request handler.
     handler = (req, callback) =>
 
         # URLs are like `/device|service/action/[serviceType]`.
         [category, action, serviceType] = req.url.split('/')[1..]
-        service = @services[serviceType]
 
-        serviceControlHandler = =>
-            # Service control messages are `POST` requests.
-            if req.method isnt 'POST' or not req.headers.soapaction?
-                return callback new HttpError 405
-
-            data = ''
-            req.on 'data', (chunk) ->
-                data += chunk
-            req.on 'end', =>
-                # `soapaction` header is like `urn:schemas-upnp-org:service:serviceType:v#actionName`
-                serviceAction = /:\d#(\w+)"$/.exec(req.headers.soapaction)[1]
-                log.debug "#{serviceAction} on #{service.type} invoked by #{req.client.remoteAddress}."
-                service.action serviceAction, data,
-                    (err, soapResponse) ->
-                        callback err, soapResponse, ext: null
-
-        serviceEventHandler = =>
-            log.debug "#{req.method} on #{service.type} received from #{req.client.remoteAddress}."
-            {sid, nt, timeout, callback: cbUrls} = req.headers
-
-            switch req.method
-
-                when 'SUBSCRIBE'
-                    if nt? and cbUrls?
-                        # New subscription.
-                        unless /<http/.test cbUrls
-                            return callback new HttpError 412
-                        respHeaders = service.subscribe cbUrls.slice(1, -1), timeout
-                        callback null, null, respHeaders
-                    else if sid? and not (nt? or cbUrls?)
-                        # `sid` is subscription ID, so this is a subscription
-                        # renewal request.
-                        respHeaders = service.renew sid, timeout
-                        callback (if respHeaders? then null else new HttpError(412)), null, respHeaders
-                    else
-                        return callback new HttpError 400
-
-                when 'UNSUBSCRIBE'
-                    unless sid?
-                        return callback new HttpError 412
-                    if nt? or cbUrls?
-                        return callback new HttpError 400
-                    service.unsubscribe sid
-                    # Unsubscription response is `200 OK`.
-                    callback null
-
-                else
-                    callback new HttpError 405
-
-        # ## Request handler.
         switch category
 
             when 'device'
-                if action isnt 'description'
-                    return callback new HttpError 404
+                return callback new HttpError 404 unless action is 'description'
                 callback null, @buildDescription()
 
             when 'service'
-                switch action
-                    when 'description'
-                        callback null, service.buildDescription()
-
-                    when 'control'
-                        serviceControlHandler()
-
-                    when 'event'
-                        serviceEventHandler()
-
-                    else
-                        callback new HttpError 404
+                @services[serviceType].requestHandler action, req, callback
 
             when 'resource'
                 @services.ContentDirectory.fetchObject action, (err, object) ->
