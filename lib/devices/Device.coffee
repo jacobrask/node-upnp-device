@@ -6,16 +6,16 @@
 
 "use strict"
 
-async  = require 'async'
-{exec} = require 'child_process'
-fs     = require 'fs'
-http   = require 'http'
-os     = require 'os'
+async = require 'async'
+{ exec } = require 'child_process'
+fs = require 'fs'
+http = require 'http'
+log = new (require 'log')
+os = require 'os'
 makeUuid = require 'node-uuid'
-xml    = require 'xml'
+xml = require 'xml'
 
-httpServer = require '../httpServer'
-ssdp       = require '../ssdp'
+ssdp = require '../ssdp'
 DeviceControlProtocol = require '../DeviceControlProtocol'
 
 
@@ -32,13 +32,18 @@ class Device extends DeviceControlProtocol
   init: (cb) ->
     async.parallel
       address: (cb) => if @address? then cb null, @address else @getNetworkIP cb
-      uuid:  (cb) => @getUuid cb
-      port:  (cb) => httpServer.start.call @, cb
+      uuid: (cb) => @getUuid cb
+      port: (cb) =>
+        http.createServer(@httpListener)
+          .listen (err) ->
+            port = @address().port
+            cb err, port
       (err, res) =>
         return @emit 'error', err if err?
         @uuid = "uuid:#{res.uuid}"
         @address = res.address
         @httpPort = res.port
+        log.info "Web server listening on port #{@httpPort}."
         ssdp.start.call @
         @emit 'ready'
 
@@ -57,8 +62,8 @@ class Device extends DeviceControlProtocol
         [ "HTTP/1.1 200 OK" ]
       else
         [ "#{reqType.toUpperCase()} * HTTP/1.1" ]
-    for header, value of headers
-      message.push "#{header.toUpperCase()}: #{value}"
+
+    message.push "#{h.toUpperCase()}: #{v}" for h, v of headers
 
     # Add carriage returns and newlines as required by HTTP spec.
     message.push '\r\n'
@@ -160,6 +165,45 @@ class Device extends DeviceControlProtocol
           { service: service.buildServiceElement() } for name, service of @services
         } ] }
     ] } ]
+
+
+  # HTTP request listener
+  httpListener: (req, res) =>
+    log.debug "#{req.url} requested by #{req.headers['user-agent']} at #{req.client.remoteAddress}."
+
+    # HTTP request handler.
+    handler = (req, cb) =>
+      # URLs are like `/device|service/action/[serviceType]`.
+      [category, serviceType, action, id] = req.url.split('/')[1..]
+
+      switch category
+        when 'device'
+          cb null, @buildDescription()
+        when 'service'
+          @services[serviceType].requestHandler { action, req, id }, cb
+        else
+          cb new HttpError 404
+
+    handler req, (err, data, headers) =>
+      if err?
+        # See UDA for error details.
+        log.warning "Responded with #{err.code}: #{err.message} for #{req.url}."
+        res.writeHead err.code, 'Content-Type': 'text/plain'
+        res.write "#{err.code} - #{err.message}"
+
+      else
+        # Make a header object for response.
+        # `null` means use `makeHeaders` function's default value.
+        headers ?= {}
+        headers['server'] ?= null
+        if data?
+          headers['Content-Type'] ?= null
+          headers['Content-Length'] ?= Buffer.byteLength(data)
+
+        res.writeHead 200, @makeHeaders headers
+        res.write data if data?
+
+      res.end()
 
 
 module.exports = Device
