@@ -25,6 +25,7 @@ class MediaServer extends Device
   version: 1
 
   addMedia: -> @services.ContentDirectory.addMedia arguments...
+  removeMedia: -> @services.ContentDirectory.removeContent arguments...
 
 
 module.exports = MediaServer

@@ -89,6 +89,12 @@ Other official UPnP classes and properties are defined in the [MediaServer speci
 The server only stores the media info for as long as it is running. It is the responsibility of the client to store media information across restarts if desired.
 
 
+### device.removeMedia(id[, callback])
+
+* id - ID of object to remove. If it has children, they will also be removed.
+* [callback(err)]
+
+
 # Development
 
 upnp-device is written in [CoffeeScript](http://coffeescript.org).

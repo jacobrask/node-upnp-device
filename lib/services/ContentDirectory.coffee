@@ -111,7 +111,7 @@ class ContentDirectory extends Service
           UpdateID: updateId
 
 
-  addMedia: (parentID, media, cb) ->
+  addMedia: (parentID, media, cb = ->) ->
     unless media.class? and media.title?
       return cb new Error 'Missing required property.'
 
@@ -144,16 +144,21 @@ class ContentDirectory extends Service
       @redis.hmset "#{id}", object
       cb err, id
 
-  # Remove object with @id and all its children.
+
+  # Remove object with `id` and all its children.
   removeContent: (id, cb) ->
-    @redis.smembers "#{id}:children", (err, childIds) =>
-      return cb new SoapError 501 if err?
-      for childId in childIds
-        @redis.del "#{childId}"
-      @redis.del [ "#{id}", "#{id}:children", "#{id}:updateid" ]
-      # Return value shouldn't matter to client, at least for now.
-      # If the smembers call worked at least we know the db is working.
-      cb null
+    remove = (id) =>
+      @redis.smembers "#{id}:children", (err, childIds) =>
+        if err? or childIds.length is 0
+          keys = [ "#{id}" ]
+        else
+          keys = childIds.concat [ "#{id}", "#{id}:children", "#{id}:updateid" ]
+          remove childId for childId in childIds
+        @redis.del keys
+    remove id
+    # Return value shouldn't matter to client, call back immediately.
+    cb null
+
 
   # Get metadata of all direct children of object with @id.
   fetchChildren: (id, cb) ->
