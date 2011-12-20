@@ -11,24 +11,19 @@ class ConnectionManager extends Service
 
   constructor: (@device) ->
     super
-    @type = 'ConnectionManager'
-    @stateVars =
-      SourceProtocolInfo:
-        value: ''
-        evented: true
-      SinkProtocolInfo:
-        value: ''
-        evented: true
-      CurrentConnectionIDs:
-        value: 0
-        evented: true
-
     @device.on 'newService', (type) =>
       if type is 'ContentDirectory'
         @device.services.ContentDirectory.on 'newContentType', =>
           # Update protocol info and notify subscribers.
           @stateVars.SourceProtocolInfo.value = @getProtocols()
           @notify()
+
+  type: 'ConnectionManager'
+  stateVars:
+    SourceProtocolInfo: { value: '', evented: yes }
+    SinkProtocolInfo: { value: '', evented: yes }
+    CurrentConnectionIDs: { value: 0,  evented: yes }
+
 
   actionHandler: (action, options, cb) ->
     # Optional actions not (yet) implemented.
@@ -41,22 +36,24 @@ class ConnectionManager extends Service
 
     switch action
       when 'GetProtocolInfo'
-        @makeProtocolInfo()
+        @makeProtocolInfo cb
       when 'GetCurrentConnectionInfo'
-        @makeConnectionInfo()
+        @makeConnectionInfo cb
       else
-        cb null, @buildSoapError new SoapError(401)
+        cb null, @buildSoapError new SoapError 401
 
 
   # Build Protocol Info string, `protocol:network:contenttype:additional`.
   getProtocols: ->
     ("http-get:*:#{type}:*" for type in @device.services.ContentDirectory.contentTypes).join(',')
 
-  makeProtocolInfo: (options, cb) ->
+
+  makeProtocolInfo: (cb) ->
     cb null, @buildSoapResponse 'GetProtocolInfo',
       Source: @stateVars.SourceProtocolInfo.value, Sink: ''
 
-  makeConnectionInfo: (options, cb) ->
+
+  makeConnectionInfo: (cb) ->
     # `PrepareForConnection` is not implemented, so only `ConnectionID`
     # available is `0`. The following are defaults from specification.
     cb null, @buildSoapResponse 'GetCurrentConnectionInfo',

@@ -22,23 +22,15 @@ class ContentDirectory extends Service
 
   constructor: (@device) ->
     super
-    @type = 'ContentDirectory'
-    # If a var is evented, it is included in notifications to subscribers.
-    @stateVars =
-      SystemUpdateID:
-        value: 0
-        evented: true
-      ContainerUpdateIDs:
-        value: ''
-        evented: true
-      SearchCapabilities:
-        value: ''
-        evented: false
-      SortCapabilities:
-        value: '*'
-        evented: false
-
     @startDb()
+
+  type: 'ContentDirectory'
+  stateVars:
+    SystemUpdateID: { value: 0, evented: yes }
+    ContainerUpdateIDs: { value: '', evented: yes }
+    SearchCapabilities: { value: '', evented: yes }
+    SortCapabilities: { value: '*', evented: no }
+
 
   actionHandler: (action, options, cb) ->
     # Optional actions not (yet) implemented.
