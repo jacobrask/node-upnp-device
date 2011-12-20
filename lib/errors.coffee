@@ -23,4 +23,5 @@ class exports.SoapError extends Error
       604: "Human Intervention Required"
       701: "No Such Object"
       709: "Invalid Sort Criteria"
+      710: "No such container"
     @message = STATUS_CODES[@code]

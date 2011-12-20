@@ -16,6 +16,7 @@ mime.define 'audio/flac': ['flac']
 
 Service = require './Service'
 {HttpError,SoapError} = require '../errors'
+utils = require '../utils'
 
 # Capitalized properties are native UPnP control actions.
 class ContentDirectory extends Service
@@ -35,8 +36,8 @@ class ContentDirectory extends Service
   actionHandler: (action, options, cb) ->
     # Optional actions not (yet) implemented.
     optionalActions = [ 'Search', 'CreateObject', 'DestroyObject',
-              'UpdateObject', 'ImportResource', 'ExportResource',
-              'StopTransferResource', 'GetTransferProgress' ]
+                        'UpdateObject', 'ImportResource', 'ExportResource',
+                        'StopTransferResource', 'GetTransferProgress' ]
     return @optionalAction cb if action in optionalActions
 
     # State variable actions and associated XML element names.
@@ -75,11 +76,12 @@ class ContentDirectory extends Service
       @emit 'newContentType'
 
   browseChildren: (options, cb) ->
-    id  = parseInt(options?.ObjectID or 0)
-    start = parseInt(options?.StartingIndex or 0)
-    max   = parseInt(options?.RequestedCount or 0)
+    id = parseInt(options.ObjectID or 0)
+    start = parseInt(options.StartingIndex or 0)
+    max = parseInt(options.RequestedCount or 0)
+    sort = if utils.isString options.SortCriteria then options.SortCriteria else ''
 
-    @fetchChildren id, (err, objects) =>
+    @fetchChildren id, sort, (err, objects) =>
       return cb err if err?
       # Limit matches. Should be done before fetch instead.
       end = if max is 0 then objects.length - 1 else start + max
@@ -141,10 +143,15 @@ class ContentDirectory extends Service
   removeContent: (id, cb) ->
     remove = (id) =>
       @redis.smembers "#{id}:children", (err, childIds) =>
+        # Remove from parent's children set.
+        @redis.hget id, "parentid", (err, parentID) =>
+          @redis.srem "#{parentID}:children", "#{id}"
+        # If no children were found, it's only `id`.
         if err? or childIds.length is 0
-          keys = [ "#{id}" ]
+          keys = [ id ]
+        # Otherwise add related fields and recurse.
         else
-          keys = childIds.concat [ "#{id}", "#{id}:children", "#{id}:updateid" ]
+          keys = childIds.concat [ id, "#{id}:children", "#{id}:updateid" ]
           remove childId for childId in childIds
         @redis.del keys
     remove id
@@ -153,20 +160,30 @@ class ContentDirectory extends Service
 
 
   # Get metadata of all direct children of object with @id.
-  fetchChildren: (id, cb) ->
-    @redis.smembers "#{id}:children", (err, childIds) =>
+  fetchChildren: (id, sortCriteria, cb) ->
+    query = [ "#{id}:children", "by" ]
+    # Sort by track number as default.
+    if sortCriteria is '' or not sortCriteria?
+      query.push '*->track'
+    else
+      # `sortCriteria` is like `+dc:title,-upnp:artist` where - is descending.
+      # We only care about the (first) key and sort direction.
+      [ dir, key ] = /(\+|-)\w+:(\w+)/.exec(sortCriteria)[1...]
+      query.push "*->#{key}"
+      query.push 'desc' if dir is '-'
+      query.push 'alpha' if key in [ 'title', 'artist', 'creator' ]
+    console.log query...
+    @redis.sort query..., (err, childIds) =>
       return cb new SoapError 501 if err?
       return cb new SoapError 701 unless childIds.length
-      async.concat(
-        childIds
-        (cId, cb) => @redis.hgetall "#{cId}", cb
+      async.concat childIds,
+        (cId, cb) => @redis.hgetall cId, cb
         (err, results) ->
           cb err, results
-      )
 
   # Get metadata of object with @id.
   fetchObject: (id, cb) ->
-    @redis.hgetall "#{id}", (err, object) ->
+    @redis.hgetall id, (err, object) ->
       return cb new SoapError 501 if err?
       return cb new SoapError 701 unless Object.keys(object).length > 0
       cb null, object
@@ -185,7 +202,7 @@ class ContentDirectory extends Service
         if exists is 1
           getId id, cb
         else
-          @redis.hget "#{id}", 'parentid', (err, parentId) =>
+          @redis.hget id, 'parentid', (err, parentId) =>
             getId parentId, cb
 
 
