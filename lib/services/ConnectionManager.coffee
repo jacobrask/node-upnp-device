@@ -7,10 +7,16 @@
 
 Service = require './Service'
 
+
 class ConnectionManager extends Service
 
   constructor: (@device) ->
     super
+    @stateVars =
+      SourceProtocolInfo: { value: '', evented: yes }
+      SinkProtocolInfo: { value: '', evented: yes }
+      CurrentConnectionIDs: { value: 0,  evented: yes }
+
     @device.on 'newService', (type) =>
       if type is 'ContentDirectory'
         @device.services.ContentDirectory.on 'newContentType', =>
@@ -18,21 +24,22 @@ class ConnectionManager extends Service
           @stateVars.SourceProtocolInfo.value = @getProtocols()
           @notify()
 
+
+  # ## Static service properties.
   type: 'ConnectionManager'
-  stateVars:
-    SourceProtocolInfo: { value: '', evented: yes }
-    SinkProtocolInfo: { value: '', evented: yes }
-    CurrentConnectionIDs: { value: 0,  evented: yes }
+
+  # Optional actions not (yet) implemented.
+  optionalActions: [ 'PrepareForConnection', 'ConnectionComplete' ]
+
+  # State variable actions and associated XML element names.
+  stateActions:
+    GetCurrentConnectionIDs: 'ConnectionIDs'
 
 
+  # Handle actions coming from `requestHandler`.
   actionHandler: (action, options, cb) ->
-    # Optional actions not (yet) implemented.
-    optionalActions = [ 'PrepareForConnection', 'ConnectionComplete' ]
-    return @optionalAction cb if action in optionalActions
-
-    # State variable actions and associated XML element names.
-    stateActions = GetCurrentConnectionIDs: 'ConnectionIDs'
-    return @getStateVar action, stateActions[action], cb if action of stateActions
+    return @optionalAction cb if action in @optionalActions
+    return @getStateVar action, stateActions[action], cb if action of @stateActions
 
     switch action
       when 'GetProtocolInfo'

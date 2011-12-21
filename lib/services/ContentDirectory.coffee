@@ -18,34 +18,38 @@ Service = require './Service'
 {HttpError,SoapError} = require '../errors'
 utils = require '../utils'
 
-# Capitalized properties are native UPnP control actions.
+
 class ContentDirectory extends Service
 
   constructor: (@device) ->
     super
+    @stateVars =
+      SystemUpdateID: { value: 0, evented: yes }
+      ContainerUpdateIDs: { value: '', evented: yes }
+      SearchCapabilities: { value: '', evented: yes }
+      SortCapabilities: { value: '*', evented: no }
+
     @startDb()
 
+
+  # ## Static service properties.
   type: 'ContentDirectory'
-  stateVars:
-    SystemUpdateID: { value: 0, evented: yes }
-    ContainerUpdateIDs: { value: '', evented: yes }
-    SearchCapabilities: { value: '', evented: yes }
-    SortCapabilities: { value: '*', evented: no }
+
+  # Optional actions not (yet) implemented.
+  optionalActions: [ 'Search', 'CreateObject', 'DestroyObject', 'UpdateObject',
+    'ImportResource', 'ExportResource', 'StopTransferResource', 'GetTransferProgress' ]
+
+  # State variable actions and associated XML element names.
+  stateActions:
+    GetSearchCapabilities: 'SearchCaps'
+    GetSortCapabilities: 'SortCaps'
+    GetSystemUpdateID: 'Id'
 
 
+  # Handle actions coming from `requestHandler`.
   actionHandler: (action, options, cb) ->
-    # Optional actions not (yet) implemented.
-    optionalActions = [ 'Search', 'CreateObject', 'DestroyObject',
-                        'UpdateObject', 'ImportResource', 'ExportResource',
-                        'StopTransferResource', 'GetTransferProgress' ]
-    return @optionalAction cb if action in optionalActions
-
-    # State variable actions and associated XML element names.
-    stateActions =
-      GetSearchCapabilities: 'SearchCaps'
-      GetSortCapabilities: 'SortCaps'
-      GetSystemUpdateID: 'Id'
-    return @getStateVar action, stateActions[action], cb if action of stateActions
+    return @optionalAction cb if action in @optionalActions
+    return @getStateVar action, stateActions[action], cb if action of @stateActions
 
     switch action
       when 'Browse'
@@ -62,6 +66,8 @@ class ContentDirectory extends Service
       else
         cb null, @buildSoapError new SoapError(401)
 
+
+  # Initialize redis conneciton.
   startDb: ->
     # Should probably create a private redis process here instead.
     @redis = redis.createClient()
@@ -69,11 +75,15 @@ class ContentDirectory extends Service
     @redis.select 9
     @redis.flushdb()
 
+
+  # Specifies which Internet Content Types (aka Mime-Types) are currently
+  # stored in the service.
   addContentType: (type) ->
     @contentTypes ?= []
     unless type in @contentTypes
       @contentTypes.push type
       @emit 'newContentType'
+
 
   browseChildren: (options, cb) ->
     id = parseInt(options.ObjectID or 0)
@@ -93,6 +103,7 @@ class ContentDirectory extends Service
           Result: @buildDidl matches
           UpdateID: updateId
 
+
   browseMetadata: (options, cb) ->
     id = parseInt(options?.ObjectID or 0)
     @fetchObject id, (err, object) =>
@@ -104,11 +115,8 @@ class ContentDirectory extends Service
           Result: @buildDidl [ object ]
           UpdateID: updateId
 
-
+  # Exposed through the public API.
   addMedia: (parentID, media, cb = ->) ->
-    unless media.class? and media.title?
-      return cb new Error 'Missing required property.'
-
     buildObject = (object, cb) =>
       object.type = /object\.(\w+)/.exec(object.class)[1]
       object.contenttype = 'audio/m3u' if object.class is 'object.container.album.musicAlbum'
@@ -139,7 +147,7 @@ class ContentDirectory extends Service
       cb err, id
 
 
-  # Remove object with `id` and all its children.
+  # Remove object with `id` and all its children. Exposed through the public API.
   removeContent: (id, cb) ->
     remove = (id) =>
       # Remove from parent's children set.
@@ -185,6 +193,7 @@ class ContentDirectory extends Service
           results = results.sort utils.sortObject sortFields...
           cb err, results
 
+
   # Get metadata of object with @id.
   fetchObject: (id, cb) ->
     @redis.hgetall id, (err, object) ->
@@ -192,6 +201,9 @@ class ContentDirectory extends Service
       return cb new SoapError 701 unless Object.keys(object).length > 0
       cb null, object
 
+
+  # Update IDs lets control points know if the data has been updated since
+  # the last request.
   getUpdateId: (id, cb) ->
     getId = (id, cb) =>
       @redis.get "#{id}:updateid", (err, updateId) ->
@@ -267,6 +279,7 @@ class ContentDirectory extends Service
     xml [ body ]
 
 
+  # Build m3u file with URLs to resources for all children of `id`.
   buildM3u: (id, cb) ->
     @redis.smembers "#{id}:children", (err, childIDs) =>
       m3u = for childID in childIDs

@@ -24,7 +24,10 @@ class MediaServer extends Device
   type: 'MediaServer'
   version: 1
 
-  addMedia: -> @services.ContentDirectory.addMedia arguments...
+  addMedia: (parentID, media, cb) ->
+    unless media.class? and media.title?
+      return cb new Error 'Missing required object property.'
+    @services.ContentDirectory.addMedia arguments...
   removeMedia: -> @services.ContentDirectory.removeContent arguments...
 
 
