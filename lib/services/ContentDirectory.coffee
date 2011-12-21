@@ -79,7 +79,7 @@ class ContentDirectory extends Service
     id = parseInt(options.ObjectID or 0)
     start = parseInt(options.StartingIndex or 0)
     max = parseInt(options.RequestedCount or 0)
-    sort = if utils.isString options.SortCriteria then options.SortCriteria else ''
+    sort = if utils.isString options.SortCriteria then options.SortCriteria else null
 
     @fetchChildren id, sort, (err, objects) =>
       return cb err if err?
@@ -160,25 +160,29 @@ class ContentDirectory extends Service
 
 
   # Get metadata of all direct children of object with @id.
-  fetchChildren: (id, sortCriteria, cb) ->
-    query = [ "#{id}:children", "by" ]
-    # Sort by track number as default.
-    if sortCriteria is '' or not sortCriteria?
-      query.push '*->track'
-    else
-      # `sortCriteria` is like `+dc:title,-upnp:artist` where - is descending.
-      # We only care about the (first) key and sort direction.
-      [ dir, key ] = /(\+|-)\w+:(\w+)/.exec(sortCriteria)[1...]
-      query.push "*->#{key}"
-      query.push 'desc' if dir is '-'
-      query.push 'alpha' if key in [ 'title', 'artist', 'creator' ]
-    console.log query...
-    @redis.sort query..., (err, childIds) =>
+  fetchChildren: (id, sortCriteria = '+upnp:track,+dc:title', cb) ->
+    sortFields = []
+    # `sortCriteria` is like `+dc:title,-upnp:artist` where - is descending.
+    return cb new SoapError 709 unless /^(\+|-)\w+:\w+/.test sortCriteria
+    for sort in sortCriteria.split(',')
+      [ dir, sortField ] = /^(\+|-)\w+:(\w+)$/.exec(sort)[1...]
+      s = name: sortField
+      # Functions to prepare value for comparison.
+      s['primer'] =
+        if sortField in [ 'track', 'length' ]
+          parseInt
+        else if sortField in [ 'title', 'artist' ]
+          (s) -> s.toLowerCase()
+      s['reverse'] = true if dir is '-'
+      sortFields.push s
+
+    @redis.smembers "#{id}:children", (err, childIds) =>
       return cb new SoapError 501 if err?
       return cb new SoapError 701 unless childIds.length
       async.concat childIds,
         (cId, cb) => @redis.hgetall cId, cb
         (err, results) ->
+          results = results.sort utils.sortObject sortFields...
           cb err, results
 
   # Get metadata of object with @id.
