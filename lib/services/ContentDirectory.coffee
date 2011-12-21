@@ -111,17 +111,17 @@ class ContentDirectory extends Service
 
     buildObject = (object, cb) =>
       object.type = /object\.(\w+)/.exec(object.class)[1]
-      if object.type is 'item' and object.location?
+      object.contenttype = 'audio/m3u' if object.class is 'object.container.album.musicAlbum'
+      if object.type is 'item'
         object.contenttype ?= mime.lookup object.location
         @addContentType object.contenttype
-
-      fs.stat object.location, (err, stats) ->
-        object.filesize = stats?.size or 0
+        fs.stat object.location, (err, stats) ->
+          object.filesize = stats?.size or 0
+          cb null, object
+      else
         cb null, object
 
-    # Insert root element and then iterate through its children and insert them.
-    buildObject media, (err, object) =>
-      @insertContent parentID, object, cb
+    buildObject media, (err, object) => @insertContent parentID, object, cb
 
 
   # Add object to Redis data store.
@@ -142,10 +142,10 @@ class ContentDirectory extends Service
   # Remove object with `id` and all its children.
   removeContent: (id, cb) ->
     remove = (id) =>
+      # Remove from parent's children set.
+      @redis.hget id, "parentid", (err, parentID) =>
+        @redis.srem "#{parentID}:children", "#{id}"
       @redis.smembers "#{id}:children", (err, childIds) =>
-        # Remove from parent's children set.
-        @redis.hget id, "parentid", (err, parentID) =>
-          @redis.srem "#{parentID}:children", "#{id}"
         # If no children were found, it's only `id`.
         if err? or childIds.length is 0
           keys = [ id ]
@@ -214,13 +214,19 @@ class ContentDirectory extends Service
   requestHandler: (args, cb) ->
     { action, id } = args
     return super(arguments...) unless action is 'resource'
-    @fetchObject id, (err, object) ->
+    @fetchObject id, (err, object) =>
       return cb new HttpError 500 if err?
-      fs.readFile object.location, (err, file) ->
+      cb2 = (err, data) ->
         return cb new HttpError 500 if err?
-        cb null, file,
+        cb null, data,
           'Content-Type': object.contenttype
-          'Content-Length': object.filesize
+          'Content-Length': object.filesize or Buffer.byteLength data
+      if object.type is 'item'
+        fs.readFile object.location, cb2
+      else if object.class is 'object.container.album.musicAlbum'
+        @buildM3u id, cb2
+      else
+        return cb new HttpError 404
 
 
   # Build a DIDL XML structure for items/containers in the MediaServer device.
@@ -240,10 +246,10 @@ class ContentDirectory extends Service
         el.push 'dc:creator': obj.creator
         el.push 'upnp:artist': obj.creator
       if obj.location? and obj.contenttype?
+        attrs = protocolInfo: "http-get:*:#{obj.contenttype}:*"
+        attrs['size'] = obj.filesize if obj.filesize?
         el.push 'res': [
-          _attr:
-            protocolInfo: "http-get:*:#{obj.contenttype}:*"
-            size: obj.filesize
+          _attr: attrs
           @makeUrl "/service/#{@type}/resource/#{obj.id}" ]
       el
 
@@ -259,5 +265,14 @@ class ContentDirectory extends Service
       body['DIDL-Lite'].push o
 
     xml [ body ]
+
+
+  buildM3u: (id, cb) ->
+    @redis.smembers "#{id}:children", (err, childIDs) =>
+      m3u = for childID in childIDs
+        @makeUrl "/service/#{@type}/resource/#{childID}"
+      cb null, m3u.join '\n'
+
+
 
 module.exports = ContentDirectory
