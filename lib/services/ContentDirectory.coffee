@@ -49,7 +49,7 @@ class ContentDirectory extends Service
   # Handle actions coming from `requestHandler`.
   actionHandler: (action, options, cb) ->
     return @optionalAction cb if action in @optionalActions
-    return @getStateVar action, stateActions[action], cb if action of @stateActions
+    return @getStateVar action, @stateActions[action], cb if action of @stateActions
 
     switch action
       when 'Browse'
