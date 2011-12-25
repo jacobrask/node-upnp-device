@@ -252,17 +252,26 @@ class ContentDirectory extends Service
           parentID: obj.parentid
           restricted: 'true'
       }
-      el.push 'dc:title': obj.title
-      el.push 'upnp:class': obj.class
-      if obj.creator?
-        el.push 'dc:creator': obj.creator
-        el.push 'upnp:artist': obj.creator
+      addProps = (el, obj, props) ->
+        for prop in props
+          key = prop.split(':')[1]
+          if key of obj
+            o = {}
+            o[prop] = obj[key]
+            el.push o
+
+      addProps el, obj, [ 'dc:title', 'upnp:class', 'dc:creator', 'upnp:artist',
+                          'upnp:genre', 'upnp:album', 'dc:date' ]
+
       if obj.location? and obj.contenttype?
         attrs = protocolInfo: "http-get:*:#{obj.contenttype}:*"
         attrs['size'] = obj.filesize if obj.filesize?
-        el.push 'res': [
-          _attr: attrs
-          @makeUrl "/service/#{@type}/resource/#{obj.id}" ]
+        url =
+          if /^(http|rtsp):/.test obj.location # Is an URL
+            obj.location
+          else # Is a file system path
+            @makeUrl "/service/#{@type}/resource/#{obj.id}"
+        el.push 'res': [ { _attr: attrs }, url ]
       el
 
     ((body={})['DIDL-Lite']=[]).push
