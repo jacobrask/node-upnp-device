@@ -8,6 +8,7 @@
 
 async = require 'async'
 { exec } = require 'child_process'
+dgram = require 'dgram'
 fs = require 'fs'
 http = require 'http'
 log = new (require 'log')
@@ -15,7 +16,6 @@ os = require 'os'
 makeUuid = require 'node-uuid'
 xml = require 'xml'
 
-ssdp = require '../ssdp'
 DeviceControlProtocol = require '../DeviceControlProtocol'
 
 
@@ -25,7 +25,12 @@ class Device extends DeviceControlProtocol
     super
     @address = address if address?
 
-  ssdp: { address: '239.255.255.250', port: 1900 }
+  ssdp:
+    address: '239.255.255.250'
+    port: 1900
+    timeout: 1800
+    limit: 5
+
   services: {}
 
   # Asynchronous operations to get and set some device properties.
@@ -36,20 +41,20 @@ class Device extends DeviceControlProtocol
       port: (cb) =>
         http.createServer(@httpListener)
           .listen (err) ->
-            port = @address().port
-            cb err, port
+            cb err, @address().port
       (err, res) =>
         return @emit 'error', err if err?
         @uuid = "uuid:#{res.uuid}"
         @address = res.address
         @httpPort = res.port
-        log.info "Web server listening on port #{@httpPort}."
-        ssdp.start.call @
+        log.info "Web server listening on http://#{@address}:#{@httpPort}"
+        @ssdpListener()
+        @ssdpAnnounce()
         @emit 'ready'
 
 
   # Generate HTTP header suiting the SSDP message type.
-  makeSSDPMessage: (reqType, customHeaders) ->
+  makeSsdpMessage: (reqType, customHeaders) ->
     # These headers are included in all SSDP messages. Add them with `null` to
     # `customHeaders` object to get default values from `makeHeaders` function.
     for h in [ 'cache-control', 'server', 'usn', 'location' ]
@@ -204,6 +209,79 @@ class Device extends DeviceControlProtocol
         res.write data if data?
 
       res.end()
+
+
+  # UDP message queue (to avoid hitting open file descriptor limit).
+  ssdpSend: (messages, address, port) ->
+    @ssdpMessages.push { messages, address, port }
+
+  ssdpMessages: async.queue (task, callback) =>
+    { messages } = task
+    address = task.address ? @::ssdp.address
+    port = task.port ? @::ssdp.port
+    socket = dgram.createSocket 'udp4'
+    # Messages with specified destination do not need TTL limit.
+    socket.setTTL 4 unless address?
+    socket.bind()
+    log.debug "Sending #{messages.length} messages to #{address}:#{port}."
+    async.concat messages,
+      (msg) -> socket.send msg, 0, msg.length, port, address
+      ->
+        socket.close()
+        callback()
+  , @::ssdp.limit
+
+
+  # Listen to SSDP searches.
+  ssdpListener: ->
+    answer = (address, port) =>
+      @ssdpSend(@makeSsdpMessage('ok',
+          st: st, ext: null
+        ) for st in @makeNotificationTypes()
+        address
+        port)
+
+    # Wait between 0 and maxWait seconds before answering to avoid flooding
+    # control points.
+    answerAfter = (maxWait, address, port) ->
+      wait = Math.floor Math.random() * (parseInt(maxWait)) * 1000
+      log.debug "Replying to search request from #{address}:#{port} in #{wait}ms."
+      setTimeout answer, wait, address, port
+
+    # Listen to messages.
+    respondTo = [ 'ssdp:all', 'upnp:rootdevice', @makeType(), @uuid ]
+    socket = dgram.createSocket 'udp4', (msg, rinfo) =>
+      # Message listener.
+      @parseRequest msg, rinfo, (err, req) ->
+        if req.method is 'M-SEARCH' and req.searchType in respondTo
+          answerAfter req.maxWait, req.address, req.port
+    socket.setMulticastTTL 4
+    socket.addMembership @ssdp.address
+    socket.bind @ssdp.port
+    log.debug "UDP socket listening for searches."
+
+
+  # Notify the network about the device.
+  ssdpAnnounce: ->
+    # Possible subtypes are 'alive' or 'byebye'.
+    notify = (subtype) =>
+      @ssdpSend(@makeSsdpMessage('notify',
+          nt: nt, nts: "ssdp:#{subtype}", host: null
+        ) for nt in @makeNotificationTypes())
+
+    # To "kill" any instances that haven't timed out on control points yet,
+    # first send byebye message.
+    notify 'byebye'
+    notify 'alive'
+
+    # Now keep advertising the device at a random interval less than half of
+    # SSDP timeout, as per spec.
+    makeTimeout = => Math.floor Math.random() * ((@ssdp.timeout / 2) * 1000)
+    announce = =>
+      setTimeout ->
+        notify('alive')
+        announce()
+      , makeTimeout()
 
 
 module.exports = Device
