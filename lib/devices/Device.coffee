@@ -87,7 +87,7 @@ class Device extends DeviceControlProtocol
       location: @makeUrl '/device/description'
       server: [
         "#{os.type()}/#{os.release()}"
-        "UPnP/#{@upnp.version}"
+        "UPnP/#{@upnp.version.join('.')}"
         "#{@name}/1.0" ].join ' '
       usn: @uuid +
         if @uuid is (customHeaders.nt or customHeaders.st) then ''
@@ -153,8 +153,8 @@ class Device extends DeviceControlProtocol
   buildDescription: ->
     '<?xml version="1.0"?>' + xml [ { root: [
       { _attr: { xmlns: @makeNS() } }
-      { specVersion: [ { major: @upnp.version.split('.')[0] }
-                       { minor: @upnp.version.split('.')[1] } ] }
+      { specVersion: [ { major: @upnp.version[0] }
+                       { minor: @upnp.version[1] } ] }
       { device: [
         { deviceType: @makeType() }
         { friendlyName: "#{@name} @ #{os.hostname()}".substr(0, 64) }

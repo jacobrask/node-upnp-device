@@ -14,25 +14,25 @@ class DeviceControlProtocol extends EventEmitter
 
   constructor: ->
 
-  schema: { prefix: 'urn:schemas-upnp-org', version: '1.0' }
-  upnp: { version: '1.0' }
+  schema: { domain: 'schemas-upnp-org', version: [1,0] }
+  upnp: { version: [1,0] }
+
 
   # Make namespace string for services, devices, events, etc.
   makeNS: (category, suffix = '') ->
     category ?= if @device? then 'service' else 'device'
-    @schema.prefix + ':' + [
-      category
-      @schema.version.split('.')[0]
-      @schema.version.split('.')[1] ].join('-') + suffix
+    [ 'urn', @schema.domain,
+      [ category, @schema.version[0], @schema.version[1] ].join '-'
+    ].join(':') + suffix
 
 
   # Make device/service type string for descriptions and SSDP messages.
   makeType: ->
-    category = if @device? then 'service' else 'device'
-    [ @schema.prefix
-      category
+    [ 'urn'
+      @schema.domain
+      if @device? then 'service' else 'device'
       @type
-      @version or @device.version
+      @version ? @device.version
     ].join ':'
 
 
@@ -40,8 +40,8 @@ class DeviceControlProtocol extends EventEmitter
   makeUrl: (path) ->
     url.format
       protocol: 'http'
-      hostname: @address or @device.address
-      port: @httpPort or @device.httpPort
+      hostname: @address ? @device.address
+      port: @httpPort ? @device.httpPort
       pathname: path
 
 
