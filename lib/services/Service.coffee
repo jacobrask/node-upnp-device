@@ -20,12 +20,33 @@ DeviceControlProtocol = require '../DeviceControlProtocol'
 
 class Service extends DeviceControlProtocol
 
-  constructor: (@device) -> super
+  constructor: (@device) ->
+    super
+    @stateVars = {}
+    for key, val of @_stateVars
+      do (key, val) =>
+        Object.defineProperty @stateVars, key,
+          get: =>
+            @_stateVars[key].value
+          set: (value) =>
+            @_stateVars[key].value = value
+            @notify() if @_stateVars[key].evented
+
 
   # Control action. Most actions build a SOAP response and calls back.
   action: (action, data, cb) ->
     (new XmlParser).parseString data, (err, data) =>
       @actionHandler action, data['s:Body']["u:#{action}"], cb
+
+
+  # Create model attribute getter/setter property.
+  attribute = (attr) ->
+    Object.defineProperty @prototype, attr,
+      get: -> @get attr
+      set: (value) ->
+        attrs = {}
+        attrs[attr] = value
+        @set attrs
 
 
   # Event subscriptions.
@@ -210,8 +231,8 @@ class Subscription
     # Specification states that all variables are sent out to all clients
     # even if only one variable changed.
     eventedVars = {}
-    for key, val of @service.stateVars when val.evented
-      eventedVars[key] = val.value
+    for key, val of @service._stateVars when val.evented
+      eventedVars[key] = @service.stateVars[key]
     eventXML = @service.buildEvent eventedVars
     @service.postEvent @urls, @uuid, @eventKey, eventXML
     @eventKey++

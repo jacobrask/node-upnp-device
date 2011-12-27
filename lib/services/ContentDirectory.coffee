@@ -21,12 +21,13 @@ Service = require './Service'
 class ContentDirectory extends Service
 
   constructor: ->
-    super
-    @stateVars =
+    @_stateVars =
       SystemUpdateID: { value: 0, evented: yes }
       ContainerUpdateIDs: { value: '', evented: yes }
       SearchCapabilities: { value: '', evented: yes }
       SortCapabilities: { value: '*', evented: no }
+
+    super
 
     @startDb()
 
@@ -75,13 +76,18 @@ class ContentDirectory extends Service
     @redis.flushdb()
 
 
-  # Specifies which Internet Content Types (aka Mime-Types) are currently
-  # stored in the service.
+  # Stores which Internet Content Types (mime-types) are currently
+  # stored in the Content Directory.
   addContentType: (type) ->
     @contentTypes ?= []
     unless type in @contentTypes
       @contentTypes.push type
-      @emit 'newContentType'
+      @device.services.ConnectionManager.stateVars.SourceProtocolInfo = @getProtocols()
+
+
+  # Build Protocol Info string, `protocol:network:contenttype:additional`.
+  getProtocols: ->
+    ("http-get:*:#{type}:*" for type in @contentTypes).join(',')
 
 
   browseChildren: (options, cb) ->

@@ -11,17 +11,11 @@ Service = require './Service'
 class ConnectionManager extends Service
 
   constructor: ->
-    super
-    @stateVars =
+    @_stateVars =
       SourceProtocolInfo: { value: '', evented: yes }
       SinkProtocolInfo: { value: '', evented: yes }
       CurrentConnectionIDs: { value: 0,  evented: yes }
-    @device.on 'newService', (type) =>
-      if type is 'ContentDirectory'
-        @device.services.ContentDirectory.on 'newContentType', =>
-          # Update protocol info and notify subscribers.
-          @stateVars.SourceProtocolInfo.value = @getProtocols()
-          @notify()
+    super
 
 
   # ## Static service properties.
@@ -47,11 +41,6 @@ class ConnectionManager extends Service
         @makeConnectionInfo cb
       else
         cb null, @buildSoapError new SoapError 401
-
-
-  # Build Protocol Info string, `protocol:network:contenttype:additional`.
-  getProtocols: ->
-    ("http-get:*:#{type}:*" for type in @device.services.ContentDirectory.contentTypes).join(',')
 
 
   makeProtocolInfo: (cb) ->

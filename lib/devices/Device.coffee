@@ -72,7 +72,6 @@ class Device extends DeviceControlProtocol
     @services = {}
     for serviceType in @serviceTypes
       @services[serviceType] = new services[serviceType] @
-      @emit 'newService', serviceType
 
 
   # Generate HTTP headers from `customHeaders` object.
