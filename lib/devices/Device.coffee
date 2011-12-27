@@ -32,6 +32,7 @@ class Device extends DeviceControlProtocol
   constructor: (@name, address) ->
     super
     @address = address if address?
+    # Socket for listening and sending messages on SSDP broadcast address.
     @broadcastSocket = dgram.createSocket 'udp4', @ssdpListener
     @broadcastSocket.setMulticastTTL @ssdp.ttl
     @broadcastSocket.addMembership @ssdp.address
@@ -44,7 +45,6 @@ class Device extends DeviceControlProtocol
     port: 1900
     timeout: 1800
     ttl: 4
-    limit: 5 # Max concurrent sockets.
 
 
   # Asynchronous operations to get and set some device properties.
@@ -137,6 +137,9 @@ class Device extends DeviceControlProtocol
         method: req.method
         maxWait: req.headers.mx
         searchType: req.headers.st
+        nt: req.headers.nt
+        nts: req.headers.nts
+        usn: req.headers.usn
         address: rinfo.address
         port: rinfo.port
     parser.execute msg, 0, msg.length
@@ -233,24 +236,30 @@ class Device extends DeviceControlProtocol
       res.end()
 
 
+  # Reuse broadcast socket for messages.
+  ssdpBroadcast: (type) ->
+    messages = for nt in @makeNotificationTypes()
+      @makeSsdpMessage('notify', nt: nt, nts: "ssdp:#{type}", host: null)
+
+    async.forEach messages,
+      (msg, cb) => @broadcastSocket.send msg, 0, msg.length, @ssdp.port, @ssdp.address, cb
+      (err) -> console.log err if err?
+
+
   # UDP message queue (to avoid opening too many file descriptors).
   ssdpSend: (messages, address, port) ->
     @ssdpMessages.push { messages, address, port }
 
-  ssdpMessages: async.queue (task, callback) =>
-    { messages } = task
-    address = task.address ? @::ssdp.address
-    port = task.port ? @::ssdp.port
-    socket = dgram.createSocket 'udp4'
-    # Messages with specified destination do not need TTL.
-    socket.setTTL 4 unless address?
-    socket.bind()
-    async.concat messages,
-      (msg) -> socket.send msg, 0, msg.length, port, address
-      ->
+  ssdpMessages: async.queue (task, queueCb) =>
+    { messages, address, port } = task
+    socket = dgram.createSocket('udp4').bind()
+    async.forEach messages,
+      (msg, cb) -> socket.send msg, 0, msg.length, port, address, cb
+      (err) ->
+        console.log err if err?
         socket.close()
-        callback()
-  , @::ssdp.limit
+        queueCb()
+  , 5 # Max concurrent sockets
 
 
   # Listen for SSDP searches.
@@ -277,23 +286,17 @@ class Device extends DeviceControlProtocol
 
   # Notify the network about the device.
   ssdpAnnounce: ->
-    # Possible subtypes are 'alive' or 'byebye'.
-    notify = (subType) =>
-      @ssdpSend(@makeSsdpMessage('notify',
-          nt: nt, nts: "ssdp:#{subType}", host: null
-        ) for nt in @makeNotificationTypes())
-
     # To "kill" any instances that haven't timed out on control points yet,
     # first send `byebye` message.
-    notify 'byebye'
-    notify 'alive'
+    @ssdpBroadcast 'byebye'
+    @ssdpBroadcast 'alive'
 
     # Keep advertising the device at a random interval less than half of
     # SSDP timeout, as per spec.
     makeTimeout = => Math.floor Math.random() * ((@ssdp.timeout / 2) * 1000)
     announce = =>
-      setTimeout ->
-        notify('alive')
+      setTimeout =>
+        @ssdpBroadcast('alive')
         announce()
       , makeTimeout()
 
