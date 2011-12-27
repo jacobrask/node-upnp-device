@@ -74,8 +74,8 @@ class Service extends DeviceControlProtocol
   getStateVar: (action, elName, cb) ->
     # Actions start with 'Get' followed by variable name.
     varName = /^(Get)?(\w+)$/.exec(action)[2]
-    return @buildSoapError new SoapError(404) unless varName of @stateVars
-    (el={})[elName] = @stateVars[varName].value
+    return @buildSoapError new SoapError(404) unless varName of @_stateVars
+    (el={})[elName] = @stateVars[varName]
     cb null, @buildSoapResponse action, el
 
 

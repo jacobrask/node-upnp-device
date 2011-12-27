@@ -252,7 +252,8 @@ class Device extends DeviceControlProtocol
 
   ssdpMessages: async.queue (task, queueCb) =>
     { messages, address, port } = task
-    socket = dgram.createSocket('udp4').bind()
+    socket = dgram.createSocket('udp4')
+    socket.bind()
     async.forEach messages,
       (msg, cb) -> socket.send msg, 0, msg.length, port, address, cb
       (err) ->

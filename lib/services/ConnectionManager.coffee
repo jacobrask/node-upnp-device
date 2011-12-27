@@ -45,7 +45,7 @@ class ConnectionManager extends Service
 
   makeProtocolInfo: (cb) ->
     cb null, @buildSoapResponse 'GetProtocolInfo',
-      Source: @stateVars.SourceProtocolInfo.value, Sink: ''
+      Source: @stateVars.SourceProtocolInfo, Sink: ''
 
 
   makeConnectionInfo: (cb) ->

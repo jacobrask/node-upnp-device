@@ -216,7 +216,7 @@ class ContentDirectory extends Service
         cb null, updateId
 
     if id is 0
-      return cb null, @stateVars.SystemUpdateID.value
+      return cb null, @stateVars.SystemUpdateID
     else
       @redis.exists "#{id}:updateid", (err, exists) =>
         # If this ID doesn't have an updateid key, get parent's updateid.
