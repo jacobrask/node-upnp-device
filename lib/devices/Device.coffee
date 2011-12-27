@@ -10,7 +10,6 @@ async = require 'async'
 dgram = require 'dgram'
 fs = require 'fs'
 http = require 'http'
-log = new (require 'log')
 os = require 'os'
 makeUuid = require 'node-uuid'
 xml = require 'xml'
@@ -64,8 +63,7 @@ class Device extends DeviceControlProtocol
         @broadcastSocket.bind @ssdp.port
         @addServices()
         @ssdpAnnounce()
-        log.info "Web server listening on http://#{@address}:#{@httpPort}"
-        log.debug "UDP socket listening for searches."
+        console.log "Web server listening on http://#{@address}:#{@httpPort}"
         @emit 'ready'
 
 
@@ -199,7 +197,7 @@ class Device extends DeviceControlProtocol
 
   # HTTP request listener
   httpListener: (req, res) =>
-    log.debug "#{req.url} requested by #{req.headers['user-agent']} at #{req.client.remoteAddress}."
+    # console.log "#{req.url} requested by #{req.headers['user-agent']} at #{req.client.remoteAddress}."
 
     # HTTP request handler.
     handler = (req, cb) =>
@@ -217,7 +215,7 @@ class Device extends DeviceControlProtocol
     handler req, (err, data, headers) =>
       if err?
         # See UDA for error details.
-        log.warning "Responded with #{err.code}: #{err.message} for #{req.url}."
+        console.log "Responded with #{err.code}: #{err.message} for #{req.url}."
         res.writeHead err.code, 'Content-Type': 'text/plain'
         res.write "#{err.code} - #{err.message}"
 
@@ -248,7 +246,6 @@ class Device extends DeviceControlProtocol
     # Messages with specified destination do not need TTL.
     socket.setTTL 4 unless address?
     socket.bind()
-    log.debug "Sending #{messages.length} messages to #{address}:#{port}."
     async.concat messages,
       (msg) -> socket.send msg, 0, msg.length, port, address
       ->
@@ -270,7 +267,7 @@ class Device extends DeviceControlProtocol
 
     answerAfter = (maxWait, address, port) ->
       wait = Math.floor Math.random() * (parseInt(maxWait)) * 1000
-      log.debug "Replying to search request from #{address}:#{port} in #{wait}ms."
+      # console.log "Replying to search request from #{address}:#{port} in #{wait}ms."
       setTimeout answer, wait, address, port
 
     respondTo = [ 'ssdp:all', 'upnp:rootdevice', @makeType(), @uuid ]

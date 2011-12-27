@@ -6,7 +6,6 @@
 
 fs = require 'fs'
 http = require 'http'
-log = new (require 'log')
 url = require 'url'
 uuid = require 'node-uuid'
 xml = require 'xml'
@@ -34,20 +33,16 @@ class Service extends DeviceControlProtocol
     sid = "uuid:#{uuid()}"
     (@subs?={})[sid] = new Subscription sid, urls, @
     timeout = @subs[sid].selfDestruct reqTimeout
-    log.debug "Added new subscription for #{@type} with #{sid}, expiring in #{timeout}s."
     { sid, timeout: "Second-#{timeout}" }
 
   renew: (sid, reqTimeout) ->
     unless @subs[sid]?
-      log.warning "Got subscription renewal request but could not find device #{sid}."
+      console.log "Got subscription renewal request but could not find device #{sid}."
       return null
     timeout = @subs[sid].selfDestruct reqTimeout
-    log.debug "Renewing subscription #{sid}, expiring in #{timeout}s."
     { sid, timeout: "Second-#{timeout}" }
 
-  unsubscribe: (sid) ->
-    log.debug "Deleting subscription #{sid}."
-    delete @subs[sid] if @subs[sid]?
+  unsubscribe: (sid) -> delete @subs[sid] if @subs[sid]?
 
 
   # For optional actions not (yet) implemented.
@@ -126,7 +121,7 @@ class Service extends DeviceControlProtocol
         headers: @device.makeHeaders headers
       req = http.request options
       req.on 'error', (err) ->
-        log.warning "#{eventUrl} - #{err.message}"
+        console.log "#{eventUrl} - #{err.message}"
       req.write data
       req.end()
 
@@ -153,7 +148,6 @@ class Service extends DeviceControlProtocol
 
       when 'control'
         serviceAction = /:\d#(\w+)"$/.exec(req.headers.soapaction)?[1]
-        log.debug "#{serviceAction} on #{@type} invoked by #{req.client.remoteAddress}."
         # Service control messages are `POST` requests.
         return cb new HttpError 405 if method isnt 'POST' or not serviceAction?
         data = ''
@@ -164,7 +158,6 @@ class Service extends DeviceControlProtocol
 
       when 'event'
         {sid, timeout, callback: urls} = req.headers
-        log.debug "#{method} on #{@type} received from #{req.client.remoteAddress}."
         if method is 'SUBSCRIBE'
           if urls?
             # New subscription.
@@ -216,7 +209,6 @@ class Subscription
   notify: ->
     # Specification states that all variables are sent out to all clients
     # even if only one variable changed.
-    log.debug "Sending out event for current state variables to #{@urls}"
     eventedVars = {}
     for key, val of @service.stateVars when val.evented
       eventedVars[key] = val.value

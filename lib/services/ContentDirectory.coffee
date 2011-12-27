@@ -7,7 +7,6 @@
 
 async = require 'async'
 fs  = require 'fs'
-log = new (require 'log')
 mime = require 'mime'
 redis = require 'redis'
 xml = require 'xml'

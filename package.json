@@ -12,7 +12,6 @@
   "dependencies": {
     "async": "*",
     "coffee-script": "*",
-    "log": "*",
     "mime": "*",
     "node-uuid": "*",
     "redis": "*",
