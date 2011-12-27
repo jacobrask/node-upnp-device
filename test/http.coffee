@@ -3,15 +3,15 @@
 assert = require 'assert'
 http = require 'http'
 upnp = require '../index'
-utils = require '../lib/utils'
+_ = require '../lib/utils'
 { Parser: XmlParser } = require 'xml2js'
 
 exports['Start an HTTP server'] = (test) ->
   deviceName = 'Foo'
   device = upnp.createDevice 'MediaServer', deviceName
   device.on 'ready', ->
-    test.ok utils.isString(device.address), "@address should be a string"
-    test.ok !isNaN(device.httpPort), '@httpPort should be a number'
+    test.ok _.isString(device.address), "@address should be a string"
+    test.ok _.isNumber(device.httpPort), '@httpPort should be a number'
     http.get host: device.address, port: device.httpPort, path: '/device/description', (res) ->
       test.equal res.statusCode, 200
       data = ''
