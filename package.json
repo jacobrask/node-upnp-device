@@ -19,6 +19,9 @@
     "xml": "*",
     "xml2js": "*"
   },
+  devDependencies: {
+    "nodeunit": "*"
+  },
   "licenses": [ {
     "type": "MIT",
     "url": "http://github.com/jacobrask/node-upnp-device/raw/master/LICENSE"
