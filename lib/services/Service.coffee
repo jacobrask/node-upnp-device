@@ -125,7 +125,8 @@ class Service extends DeviceControlProtocol
         path: u.pathname
         headers: @device.makeHeaders headers
       req = http.request options
-      req.on 'error', (err) -> throw err
+      req.on 'error', (err) ->
+        log.warning "#{eventUrl} - #{err.message}"
       req.write data
       req.end()
 
@@ -167,8 +168,10 @@ class Service extends DeviceControlProtocol
         if method is 'SUBSCRIBE'
           if urls?
             # New subscription.
-            err = new HttpError(412) unless /<http/.test urls
-            resp = @subscribe urls.slice(1, -1), timeout
+            if /<http/.test urls
+              resp = @subscribe urls.slice(1, -1), timeout
+            else
+              err = new HttpError(412)
           else if sid?
             # `sid` is subscription ID, so this is a renewal request.
             resp = @renew sid, timeout

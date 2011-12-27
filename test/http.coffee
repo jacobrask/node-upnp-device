@@ -12,11 +12,11 @@ exports['Start an HTTP server'] = (test) ->
   device.on 'ready', ->
     test.ok _.isString(device.address), "@address should be a string"
     test.ok _.isNumber(device.httpPort), '@httpPort should be a number'
-    http.get host: device.address, port: device.httpPort, path: '/device/description', (res) ->
+    req = http.get host: device.address, port: device.httpPort, path: '/device/description', (res) ->
       test.equal res.statusCode, 200
       data = ''
       res.on 'data', (chunk) -> data += chunk
-      res.on 'close', (err) -> test.ifError err, "Server error"
+      res.on 'close', (err) -> test.ifError err, "Server error - #{err.message}"
       res.on 'end', -> (new XmlParser).parseString data, (err, data) ->
         test.ifError err, "Invalid XML in response"
         test.equal deviceName, data.device.modelName, "modelName should equal name passed to createDevice function"
