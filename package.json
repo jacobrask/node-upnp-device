@@ -18,7 +18,7 @@
     "xml": "*",
     "xml2js": "*"
   },
-  devDependencies: {
+  "devDependencies": {
     "nodeunit": "*"
   },
   "licenses": [ {
