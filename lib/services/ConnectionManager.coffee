@@ -1,16 +1,16 @@
-# Implements ConnectionManager:1
-# http://upnp.org/specs/av/av1/
+# Implements [ConnectionManager:1] [1] service for [MediaServer] [2] devices.
 #
-# vim: ts=2 sw=2 sts=2
+# [1]: http://upnp.org/specs/av/av1/
+# [2]: MediaServer.html
 
 "use strict"
 
+# Extends generic [`Service`](Service.html) class.
 Service = require './Service'
-
 
 class ConnectionManager extends Service
 
-  constructor: (@device) ->
+  constructor: ->
     super
     @stateVars =
       SourceProtocolInfo: { value: '', evented: yes }

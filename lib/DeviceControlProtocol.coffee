@@ -2,8 +2,6 @@
 # specified in [UPnP Device Control Protocol] [1].
 #
 # [1]: http://upnp.org/index.php/sdcps-and-certification/standards/sdcps/
-#
-# vim: ts=2 sw=2 sts=2
 
 "use strict"
 

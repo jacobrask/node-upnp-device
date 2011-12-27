@@ -1,8 +1,7 @@
-# Properties and functionality as specified in [UPnP Device Architecture 1.0] [1].
+# Properties and functionality common for all devices,
+# as specified in [UPnP Device Architecture 1.0] [1].
 #
 # [1]: http://upnp.org/sdcps-and-certification/standards/device-architecture-documents/
-#
-# vim: ts=2 sw=2 sts=2
 
 "use strict"
 
@@ -16,11 +15,17 @@ os = require 'os'
 makeUuid = require 'node-uuid'
 xml = require 'xml'
 
+# Require all currently implemented services, later added to devices with
+# `addServices` method.
+#
+# * [`ConnectionManager`](ConnectionManager.html)
+# * [`ContentDirectory`](ContentDirectory.html)
 services =
   ConnectionManager: require '../services/ConnectionManager'
   ContentDirectory:  require '../services/ContentDirectory'
 
-
+# `Device` extends [`DeviceControlProtocol`](DeviceControlProtocol.html)
+# with properties and methods common to devices and services.
 DeviceControlProtocol = require '../DeviceControlProtocol'
 
 class Device extends DeviceControlProtocol
@@ -33,14 +38,15 @@ class Device extends DeviceControlProtocol
     @broadcastSocket.addMembership @ssdp.address
     @init()
 
+
+  # SSDP configuration.
   ssdp:
-    address: '239.255.255.250'
+    address: '239.255.255.250' # Address and port for broadcast messages.
     port: 1900
     timeout: 1800
     ttl: 4
-    limit: 5
+    limit: 5 # Max concurrent sockets.
 
-  services: {}
 
   # Asynchronous operations to get and set some device properties.
   init: (cb) ->
@@ -62,17 +68,21 @@ class Device extends DeviceControlProtocol
         log.debug "UDP socket listening for searches."
         @emit 'ready'
 
+
+  # When HTTP and SSDP servers are started, we add and initialize services.
   addServices: ->
+    @services = {}
     for serviceType in @serviceTypes
       @services[serviceType] = new services[serviceType] @
       @emit 'newService', serviceType
 
-  # Generate HTTP header suiting the SSDP message type.
+
+  # Generate HTTP headers from `customHeaders` object.
   makeSsdpMessage: (reqType, customHeaders) ->
-    # These headers are included in all SSDP messages. Add them with `null` to
-    # `customHeaders` object to get default values from `makeHeaders` function.
-    for h in [ 'cache-control', 'server', 'usn', 'location' ]
-      customHeaders[h] = null
+    # These headers are included in all SSDP messages. Add them as `null` to
+    # `customHeaders` object to use default values from `makeHeaders` function.
+    for header in [ 'cache-control', 'server', 'usn', 'location' ]
+      customHeaders[header] = null
     headers = @makeHeaders customHeaders
 
     # Build message string.
@@ -89,17 +99,12 @@ class Device extends DeviceControlProtocol
     new Buffer message.join '\r\n'
 
 
-  # Make `nt`'s for 3 messages about the device, and 1 for each service.
-  makeNotificationTypes: ->
-    [ 'upnp:rootdevice', @uuid, @makeType() ]
-      .concat(@makeType.call service for name, service of @services)
-
-
-  # Generate an HTTP header object for HTTP and SSDP messages.
+  # Generate an object with HTTP headers for HTTP and SSDP messages.
+  # Adds defaults and makes headers uppercase.
   makeHeaders: (customHeaders) ->
-    # Headers which always have the same values (if included).
+    # If key exists in `customHeaders` but is `null`, use these defaults.
     defaultHeaders =
-      'cache-control': "max-age=1800"
+      'cache-control': "max-age=#{@ssdp.timeout}"
       'content-type': 'text/xml; charset="utf-8"'
       ext: ''
       host: "#{@ssdp.address}:#{@ssdp.port}"
@@ -118,9 +123,15 @@ class Device extends DeviceControlProtocol
     headers
 
 
+  # Make 3 `nt`'s with device info, and 1 for each service.
+  makeNotificationTypes: ->
+    [ 'upnp:rootdevice', @uuid, @makeType() ]
+      .concat(@makeType.call service for name, service of @services)
+
+
   # Parse SSDP headers using the HTTP module parser.
-  # The API is not documented and not guaranteed to be stable.
   parseRequest: (msg, rinfo, cb) ->
+    # `http.parsers` is not documented and not guaranteed to be stable.
     parser = http.parsers.alloc()
     parser.reinitialize 'request'
     parser.onIncoming = (req) ->
@@ -150,7 +161,7 @@ class Device extends DeviceControlProtocol
       cb null, uuid
 
 
-  # We need to get the server's internal network IP to send out in SSDP messages.
+  # Get the server's internal network IP to send out URL in SSDP messages.
   # Only works on Linux and Mac.
   getNetworkIP: (cb) ->
     exec 'ifconfig', (err, stdout) ->
@@ -225,7 +236,7 @@ class Device extends DeviceControlProtocol
       res.end()
 
 
-  # UDP message queue (to avoid hitting open file descriptor limit).
+  # UDP message queue (to avoid opening too many file descriptors).
   ssdpSend: (messages, address, port) ->
     @ssdpMessages.push { messages, address, port }
 
@@ -234,7 +245,7 @@ class Device extends DeviceControlProtocol
     address = task.address ? @::ssdp.address
     port = task.port ? @::ssdp.port
     socket = dgram.createSocket 'udp4'
-    # Messages with specified destination do not need TTL limit.
+    # Messages with specified destination do not need TTL.
     socket.setTTL 4 unless address?
     socket.bind()
     log.debug "Sending #{messages.length} messages to #{address}:#{port}."
@@ -246,9 +257,8 @@ class Device extends DeviceControlProtocol
   , @::ssdp.limit
 
 
-  # Listen to SSDP searches.
+  # Listen for SSDP searches.
   ssdpListener: (msg, rinfo) =>
-
     # Wait between 0 and maxWait seconds before answering to avoid flooding
     # control points.
     answer = (address, port) =>
@@ -272,17 +282,17 @@ class Device extends DeviceControlProtocol
   # Notify the network about the device.
   ssdpAnnounce: ->
     # Possible subtypes are 'alive' or 'byebye'.
-    notify = (subtype) =>
+    notify = (subType) =>
       @ssdpSend(@makeSsdpMessage('notify',
-          nt: nt, nts: "ssdp:#{subtype}", host: null
+          nt: nt, nts: "ssdp:#{subType}", host: null
         ) for nt in @makeNotificationTypes())
 
     # To "kill" any instances that haven't timed out on control points yet,
-    # first send byebye message.
+    # first send `byebye` message.
     notify 'byebye'
     notify 'alive'
 
-    # Now keep advertising the device at a random interval less than half of
+    # Keep advertising the device at a random interval less than half of
     # SSDP timeout, as per spec.
     makeTimeout = => Math.floor Math.random() * ((@ssdp.timeout / 2) * 1000)
     announce = =>

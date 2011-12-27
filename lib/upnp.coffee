@@ -1,17 +1,23 @@
-# UPnP Devices.
-#
-# vim: ts=2 sw=2 sts=2
+# UPnP device creation.
 
 "use strict"
 
 {EventEmitter} = require 'events'
 
+# Require all currently implemented devices.
+#
+# * [`MediaServer`](MediaServer.html)
 devices = mediaserver: require './devices/MediaServer'
 
-exports.createDevice = (reqType, name, address) ->
-  type = reqType.toLowerCase()
+
+# Returns a device which will emit the `ready` event when asynchronous
+# initialization operations finishes.
+exports.createDevice = (deviceType, name, address) ->
+  type = deviceType.toLowerCase()
   unless type of devices
     device = new EventEmitter
-    device.emit 'error', new Error "UPnP device of type #{type} is not yet implemented."
+    device.emit 'error',
+      new Error "UPnP device of type #{deviceType} is not yet implemented."
     return device
+
   new devices[type] name, address

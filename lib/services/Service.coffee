@@ -1,7 +1,6 @@
-# Implements UPnP Device Architecture version 1.0
-# http://upnp.org/sdcps-and-certification/standards/device-architecture-documents/
+# Implements [UPnP Device Architecture version 1.0] [1]
 #
-# vim: ts=2 sw=2 sts=2
+# [1]: http://upnp.org/sdcps-and-certification/standards/device-architecture-documents/
 
 "use strict"
 
@@ -13,9 +12,12 @@ uuid = require 'node-uuid'
 xml = require 'xml'
 { Parser: XmlParser } = require 'xml2js'
 
-DeviceControlProtocol = require '../DeviceControlProtocol'
 { HttpError, SoapError } = require '../errors'
 _ = require '../utils'
+
+# `Service` extends [`DeviceControlProtocol`](DeviceControlProtocol.html)
+# with properties and methods common to devices and services.
+DeviceControlProtocol = require '../DeviceControlProtocol'
 
 class Service extends DeviceControlProtocol
 

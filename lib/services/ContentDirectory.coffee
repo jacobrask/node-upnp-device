@@ -1,27 +1,27 @@
-# Implements [ContentDirectory:1] [1].
+# Implements [ContentDirectory:1] [1] service for [MediaServer] [2] devices.
 #
 # [1]: http://upnp.org/specs/av/av1/
-#
-# vim: ts=2 sw=2 sts=2
+# [2]: MediaServer.html
 
 "use strict"
 
 async = require 'async'
 fs  = require 'fs'
-log   = new (require 'log')
-mime  = require 'mime'
+log = new (require 'log')
+mime = require 'mime'
 redis = require 'redis'
-xml   = require 'xml'
+xml = require 'xml'
 mime.define 'audio/flac': ['flac']
 
-Service = require './Service'
 {HttpError,SoapError} = require '../errors'
 _ = require '../utils'
 
+# Extends generic [`Service`](Service.html) class.
+Service = require './Service'
 
 class ContentDirectory extends Service
 
-  constructor: (@device) ->
+  constructor: ->
     super
     @stateVars =
       SystemUpdateID: { value: 0, evented: yes }
