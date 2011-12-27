@@ -16,19 +16,28 @@ os = require 'os'
 makeUuid = require 'node-uuid'
 xml = require 'xml'
 
-DeviceControlProtocol = require '../DeviceControlProtocol'
+services =
+  ConnectionManager: require '../services/ConnectionManager'
+  ContentDirectory:  require '../services/ContentDirectory'
 
+
+DeviceControlProtocol = require '../DeviceControlProtocol'
 
 class Device extends DeviceControlProtocol
 
   constructor: (@name, address) ->
     super
     @address = address if address?
+    @broadcastSocket = dgram.createSocket 'udp4', @ssdpListener
+    @broadcastSocket.setMulticastTTL @ssdp.ttl
+    @broadcastSocket.addMembership @ssdp.address
+    @init()
 
   ssdp:
     address: '239.255.255.250'
     port: 1900
     timeout: 1800
+    ttl: 4
     limit: 5
 
   services: {}
@@ -39,19 +48,24 @@ class Device extends DeviceControlProtocol
       address: (cb) => if @address? then cb null, @address else @getNetworkIP cb
       uuid: (cb) => @getUuid cb
       port: (cb) =>
-        http.createServer(@httpListener)
-          .listen (err) ->
-            cb err, @address().port
+        @httpServer = http.createServer(@httpListener)
+        @httpServer.listen (err) -> cb err, @address().port
       (err, res) =>
         return @emit 'error', err if err?
         @uuid = "uuid:#{res.uuid}"
         @address = res.address
         @httpPort = res.port
-        log.info "Web server listening on http://#{@address}:#{@httpPort}"
-        @ssdpListener()
+        @broadcastSocket.bind @ssdp.port
+        @addServices()
         @ssdpAnnounce()
+        log.info "Web server listening on http://#{@address}:#{@httpPort}"
+        log.debug "UDP socket listening for searches."
         @emit 'ready'
 
+  addServices: ->
+    for serviceType in @serviceTypes
+      @services[serviceType] = new services[serviceType] @
+      @emit 'newService', serviceType
 
   # Generate HTTP header suiting the SSDP message type.
   makeSsdpMessage: (reqType, customHeaders) ->
@@ -233,7 +247,10 @@ class Device extends DeviceControlProtocol
 
 
   # Listen to SSDP searches.
-  ssdpListener: ->
+  ssdpListener: (msg, rinfo) =>
+
+    # Wait between 0 and maxWait seconds before answering to avoid flooding
+    # control points.
     answer = (address, port) =>
       @ssdpSend(@makeSsdpMessage('ok',
           st: st, ext: null
@@ -241,24 +258,15 @@ class Device extends DeviceControlProtocol
         address
         port)
 
-    # Wait between 0 and maxWait seconds before answering to avoid flooding
-    # control points.
     answerAfter = (maxWait, address, port) ->
       wait = Math.floor Math.random() * (parseInt(maxWait)) * 1000
       log.debug "Replying to search request from #{address}:#{port} in #{wait}ms."
       setTimeout answer, wait, address, port
 
-    # Listen to messages.
     respondTo = [ 'ssdp:all', 'upnp:rootdevice', @makeType(), @uuid ]
-    socket = dgram.createSocket 'udp4', (msg, rinfo) =>
-      # Message listener.
-      @parseRequest msg, rinfo, (err, req) ->
-        if req.method is 'M-SEARCH' and req.searchType in respondTo
-          answerAfter req.maxWait, req.address, req.port
-    socket.setMulticastTTL 4
-    socket.addMembership @ssdp.address
-    socket.bind @ssdp.port
-    log.debug "UDP socket listening for searches."
+    @parseRequest msg, rinfo, (err, req) ->
+      if req.method is 'M-SEARCH' and req.searchType in respondTo
+        answerAfter req.maxWait, req.address, req.port
 
 
   # Notify the network about the device.

@@ -19,7 +19,7 @@ utils = require '../utils'
 
 class Service extends DeviceControlProtocol
 
-  constructor: (@device) ->
+  constructor: (@device) -> super
 
   # Control action. Most actions build a SOAP response and calls back.
   action: (action, data, cb) ->

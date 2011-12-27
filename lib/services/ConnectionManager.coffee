@@ -16,7 +16,6 @@ class ConnectionManager extends Service
       SourceProtocolInfo: { value: '', evented: yes }
       SinkProtocolInfo: { value: '', evented: yes }
       CurrentConnectionIDs: { value: 0,  evented: yes }
-
     @device.on 'newService', (type) =>
       if type is 'ContentDirectory'
         @device.services.ContentDirectory.on 'newContentType', =>
