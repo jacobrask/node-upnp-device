@@ -16,7 +16,7 @@ mime.define 'audio/flac': ['flac']
 
 Service = require './Service'
 {HttpError,SoapError} = require '../errors'
-utils = require '../utils'
+_ = require '../utils'
 
 
 class ContentDirectory extends Service
@@ -89,7 +89,7 @@ class ContentDirectory extends Service
     id = parseInt(options.ObjectID or 0)
     start = parseInt(options.StartingIndex or 0)
     max = parseInt(options.RequestedCount or 0)
-    sort = if utils.isString options.SortCriteria then options.SortCriteria else null
+    sort = if _.isString options.SortCriteria then options.SortCriteria else null
 
     @fetchChildren id, sort, (err, objects) =>
       return cb err if err?
@@ -190,7 +190,7 @@ class ContentDirectory extends Service
       async.concat childIds,
         (cId, cb) => @redis.hgetall cId, cb
         (err, results) ->
-          results = results.sort utils.sortObject sortFields...
+          results = results.sort _.sortObject sortFields...
           cb err, results
 
 

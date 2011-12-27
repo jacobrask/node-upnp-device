@@ -1,20 +1,14 @@
-# Utility functions.
-#
-# [1]: http://upnp.org/specs/av/av1/
+# Extend underscore library with own utility functions and export.
 #
 # vim: ts=2 sw=2 sts=2
 
 "use strict"
 
-# Get object's `[[Class]]` property.
-objectType = (obj) -> /\[object (\w+)\]/.exec(Object::toString.call(obj))[1]
-isFunction = exports.isObject = (obj) -> objectType(obj) is 'Function'
-isObject = exports.isObject = (obj) -> objectType(obj) is 'Object'
-isString = exports.isString = (obj) -> objectType(obj) is 'String'
+_ = require 'underscore'
 
 # Make each key/value pair in object into separate objects in `arr`.
-objectToArray = exports.objectToArray = (obj, arr = []) ->
-  throw new TypeError("Not an object.") unless isObject obj
+_.mixin objectToArray: (obj, arr = []) ->
+  throw new TypeError("Not an object.") unless _.isObject obj
   Object.keys(obj).map (key) ->
     o = {}
     o[key] = obj[key]
@@ -23,12 +17,12 @@ objectToArray = exports.objectToArray = (obj, arr = []) ->
 
 # Sort an object on any number of keys.
 # An argument is a string or an object with `name`, `primer`, `reverse`.
-sortObject = exports.sortObject = ->
+_.mixin sortObject: ->
   fields = [].slice.call arguments
   (A, B) ->
     for field in fields
-      key = if isObject field then field.name else field
-      primer = if isFunction field.primer then field.primer else (v) -> v
+      key = if _.isObject field then field.name else field
+      primer = if _.isFunction field.primer then field.primer else (v) -> v
       reverse = if field.reverse then -1 else 1
       a = primer A[key]
       b = primer B[key]
@@ -41,3 +35,6 @@ sortObject = exports.sortObject = ->
           reverse * 0
       break if result isnt 0
     result
+
+
+module.exports = _

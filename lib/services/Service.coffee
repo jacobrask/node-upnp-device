@@ -15,7 +15,7 @@ xml = require 'xml'
 
 DeviceControlProtocol = require '../DeviceControlProtocol'
 { HttpError, SoapError } = require '../errors'
-utils = require '../utils'
+_ = require '../utils'
 
 class Service extends DeviceControlProtocol
 
@@ -68,7 +68,7 @@ class Service extends DeviceControlProtocol
   # Build a SOAP response XML document.
   buildSoapResponse: (action, args) ->
     # Create an action element.
-    (body={})["u:#{action}Response"] = utils.objectToArray args,
+    (body={})["u:#{action}Response"] = _.objectToArray args,
       [ _attr: { 'xmlns:u': @makeType() } ]
 
     '<?xml version="1.0"?>' + xml [ 's:Envelope': [
@@ -81,15 +81,15 @@ class Service extends DeviceControlProtocol
 
   # Build a SOAP error XML document.
   buildSoapError: (error) ->
-    '<?xml version="1.0"?>' + xml [ 's:Envelope': utils.objectToArray(
+    '<?xml version="1.0"?>' + xml [ 's:Envelope': _.objectToArray(
       _attr:
         'xmlns:s': 'http://schemas.xmlsoap.org/soap/envelope/'
         's:encodingStyle': 'http://schemas.xmlsoap.org/soap/encoding/'
       's:Body': [
-        's:Fault': utils.objectToArray(
+        's:Fault': _.objectToArray(
           faultcode: 's:Client'
           faultstring: 'UPnPError'
-          detail: [ 'UPnPError': utils.objectToArray(
+          detail: [ 'UPnPError': _.objectToArray(
             _attr: 'xmlns:e': @makeNS 'control'
             errorCode: error.code
             errorDescription: error.message ) ]
@@ -101,7 +101,7 @@ class Service extends DeviceControlProtocol
   buildEvent: (vars) ->
     '<?xml version="1.0"?>' + xml [ 'e:propertyset': [
       { _attr: 'xmlns:e': @makeNS 'event' }
-      { 'e:property': utils.objectToArray vars }
+      { 'e:property': _.objectToArray vars }
     ] ]
 
 
