@@ -71,7 +71,7 @@ class ContentDirectory extends Service
   startDb: ->
     # Should probably create a private redis process here instead.
     @redis = redis.createClient()
-    @redis.on 'error', (err) -> throw err
+    @redis.on 'error', (err) -> console.log err if err?
     @redis.select 9
     @redis.flushdb()
 
