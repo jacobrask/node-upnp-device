@@ -5,7 +5,6 @@
 
 "use strict"
 
-async = require 'async'
 { exec } = require 'child_process'
 dgram = require 'dgram'
 fs = require 'fs'
@@ -13,6 +12,8 @@ http = require 'http'
 os = require 'os'
 makeUuid = require 'node-uuid'
 xml = require 'xml'
+
+_ = require '../utils'
 
 # Require all currently implemented services, later added to devices with
 # `addServices` method.
@@ -49,7 +50,7 @@ class Device extends DeviceControlProtocol
 
   # Asynchronous operations to get and set some device properties.
   init: (cb) ->
-    async.parallel
+    _.async.parallel
       address: (cb) => if @address? then cb null, @address else @getNetworkIP cb
       uuid: (cb) => @getUuid cb
       port: (cb) =>
@@ -241,7 +242,7 @@ class Device extends DeviceControlProtocol
     messages = for nt in @makeNotificationTypes()
       @makeSsdpMessage('notify', nt: nt, nts: "ssdp:#{type}", host: null)
 
-    async.forEach messages,
+    _.async.forEach messages,
       (msg, cb) => @broadcastSocket.send msg, 0, msg.length, @ssdp.port, @ssdp.address, cb
       (err) -> console.log err if err?
 
@@ -250,11 +251,11 @@ class Device extends DeviceControlProtocol
   ssdpSend: (messages, address, port) ->
     @ssdpMessages.push { messages, address, port }
 
-  ssdpMessages: async.queue (task, queueCb) =>
+  ssdpMessages: _.async.queue (task, queueCb) =>
     { messages, address, port } = task
     socket = dgram.createSocket('udp4')
     socket.bind()
-    async.forEach messages,
+    _.async.forEach messages,
       (msg, cb) -> socket.send msg, 0, msg.length, port, address, cb
       (err) ->
         console.log err if err?

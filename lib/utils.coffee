@@ -4,7 +4,10 @@
 
 "use strict"
 
+async = require 'async'
 _ = require 'underscore'
+
+_.async = async
 
 # Make each key/value pair in object into separate objects in `arr`.
 _.mixin objectToArray: (obj, arr = []) ->
@@ -35,6 +38,5 @@ _.mixin sortObject: ->
           reverse * 0
       break if result isnt 0
     result
-
 
 module.exports = _

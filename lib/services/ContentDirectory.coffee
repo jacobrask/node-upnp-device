@@ -5,7 +5,6 @@
 
 "use strict"
 
-async = require 'async'
 fs  = require 'fs'
 mime = require 'mime'
 redis = require 'redis'
@@ -183,7 +182,7 @@ class ContentDirectory extends Service
     @redis.smembers "#{id}:children", (err, childIds) =>
       return cb new SoapError 501 if err?
       return cb new SoapError 701 unless childIds.length
-      async.concat childIds,
+      _.async.concat childIds,
         (cId, cb) => @redis.hgetall cId, cb
         (err, results) ->
           results = results.sort _.sortObject sortFields...
