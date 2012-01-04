@@ -121,20 +121,11 @@ class ContentDirectory extends Service
           UpdateID: updateId
 
   # Exposed through the public API.
-  addMedia: (parentID, media, cb = ->) ->
-    buildObject = (object, cb) =>
-      object.type = /object\.(\w+)/.exec(object.class)[1]
-      object.contenttype = 'audio/m3u' if object.class is 'object.container.album.musicAlbum'
-      if object.type is 'item'
-        object.contenttype ?= mime.lookup object.location
-        @addContentType object.contenttype
-        fs.stat object.location, (err, stats) ->
-          object.filesize = stats?.size or 0
-          cb null, object
-      else
-        cb null, object
-
-    buildObject media, (err, object) => @insertContent parentID, object, cb
+  addMedia: (parentID, media, cb) ->
+    obj = _.clone media
+    obj.type = /object\.(\w+)/.exec(obj.class)[1]
+    @addContentType obj.contenttype if obj.contenttype
+    @insertContent parentID, obj, cb
 
 
   # Add object to Redis data store.
@@ -271,12 +262,7 @@ class ContentDirectory extends Service
       if obj.location? and obj.contenttype?
         attrs = protocolInfo: "http-get:*:#{obj.contenttype}:*"
         attrs['size'] = obj.filesize if obj.filesize?
-        url =
-          if /^(http|rtsp):/.test obj.location # Is an URL
-            obj.location
-          else # Is a file system path
-            @makeUrl "/service/#{@type}/resource/#{obj.id}"
-        el.push 'res': [ { _attr: attrs }, url ]
+        el.push 'res': [ { _attr: attrs }, obj.location ]
       el
 
     ((body={})['DIDL-Lite']=[]).push
