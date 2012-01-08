@@ -5,7 +5,7 @@
 
 "use strict"
 
-{ exec } = require 'child_process'
+{exec} = require 'child_process'
 dgram = require 'dgram'
 fs = require 'fs'
 http = require 'http'
@@ -24,8 +24,8 @@ services =
   ConnectionManager: require '../services/ConnectionManager'
   ContentDirectory:  require '../services/ContentDirectory'
 
-# `Device` extends [`DeviceControlProtocol`](DeviceControlProtocol.html)
-# with properties and methods common to devices and services.
+# `Device` extends [`DeviceControlProtocol`](DeviceControlProtocol.html) with
+# properties and methods common to devices and services.
 DeviceControlProtocol = require '../DeviceControlProtocol'
 
 class Device extends DeviceControlProtocol
@@ -77,28 +77,30 @@ class Device extends DeviceControlProtocol
 
   # Generate HTTP headers from `customHeaders` object.
   makeSsdpMessage: (reqType, customHeaders) ->
-    # These headers are included in all SSDP messages. Add them as `null` to
-    # `customHeaders` object to use default values from `makeHeaders` function.
+    # These headers are included in all SSDP messages. Setting their value
+    # to `null` makes `makeHeaders()` add default values.
     for header in [ 'cache-control', 'server', 'usn', 'location' ]
       customHeaders[header] = null
     headers = @makeHeaders customHeaders
 
-    # Build message string.
+    # First line of message string.
+    # We build the string as an array first for `join()` convenience.
     message =
       if reqType is 'ok'
         [ "HTTP/1.1 200 OK" ]
       else
         [ "#{reqType.toUpperCase()} * HTTP/1.1" ]
 
+    # Add header key/value pairs.
     message.push "#{h.toUpperCase()}: #{v}" for h, v of headers
 
-    # Add carriage returns and newlines as required by HTTP spec.
+    # Add carriage returns and newlines as specified by HTTP.
     message.push '\r\n'
     new Buffer message.join '\r\n'
 
 
   # Generate an object with HTTP headers for HTTP and SSDP messages.
-  # Adds defaults and makes headers uppercase.
+  # Adds defaults and uppercases headers.
   makeHeaders: (customHeaders) ->
     # If key exists in `customHeaders` but is `null`, use these defaults.
     defaultHeaders =
@@ -121,7 +123,7 @@ class Device extends DeviceControlProtocol
     headers
 
 
-  # Make 3 `nt`'s with device info, and 1 for each service.
+  # Make `nt` header values. 3 with device info, plus 1 per service.
   makeNotificationTypes: ->
     [ 'upnp:rootdevice', @uuid, @makeType() ]
       .concat(@makeType.call service for name, service of @services)
@@ -134,15 +136,9 @@ class Device extends DeviceControlProtocol
     parser.reinitialize 'request'
     parser.onIncoming = (req) ->
       http.parsers.free parser
-      cb null,
-        method: req.method
-        maxWait: req.headers.mx
-        searchType: req.headers.st
-        nt: req.headers.nt
-        nts: req.headers.nts
-        usn: req.headers.usn
-        address: rinfo.address
-        port: rinfo.port
+      { method, headers: { mx, st, nt, nts, usn } } = req
+      { address, port } = rinfo
+      cb null, { method, mx, st, nt, nts, usn, address, port }
     parser.execute msg, 0, msg.length
 
 
@@ -150,10 +146,7 @@ class Device extends DeviceControlProtocol
   getUuid: (cb) ->
     uuidFile = "#{__dirname}/../../upnp-uuid"
     fs.readFile uuidFile, 'utf8', (err, file) =>
-      data =  try
-            JSON.parse file
-          catch e
-            { }
+      data = try JSON.parse file; catch e then {}
       uuid = data[@type]?[@name]
       unless uuid?
         (data[@type]?={})[@name] = uuid = makeUuid()
@@ -167,15 +160,12 @@ class Device extends DeviceControlProtocol
   getNetworkIP: (cb) ->
     exec 'ifconfig', (err, stdout) ->
       switch process.platform
-        when 'darwin'
-          filterRE = /\binet\s+([^\s]+)/g
-        when 'linux'
-          filterRE = /\binet\b[^:]+:\s*([^\s]+)/g
-        else
-          return cb new Error "Can't get IP address on this platform."
+        when 'darwin' then filterRE = /\binet\s+([^\s]+)/g
+        when 'linux'  then filterRE = /\binet\b[^:]+:\s*([^\s]+)/g
+        else return cb new Error "Can't get IP address on this platform."
       isLocal = (address) -> /(127\.0\.0\.1|::1|fe80(:1)?::1(%.*)?)$/i.test address
       matches = stdout.match(filterRE) or ''
-      ip = (match.replace(filterRE, '$1') for match in matches when !isLocal match)[0]
+      [ip] = (match.replace(filterRE, '$1') for match in matches when !isLocal match)
       err = if ip? then null else new Error "IP address could not be retrieved."
       cb err, ip
 
@@ -282,8 +272,8 @@ class Device extends DeviceControlProtocol
 
     respondTo = [ 'ssdp:all', 'upnp:rootdevice', @makeType(), @uuid ]
     @parseRequest msg, rinfo, (err, req) ->
-      if req.method is 'M-SEARCH' and req.searchType in respondTo
-        answerAfter req.maxWait, req.address, req.port
+      if req.method is 'M-SEARCH' and req.st in respondTo
+        answerAfter req.mx, req.address, req.port
 
 
   # Notify the network about the device.

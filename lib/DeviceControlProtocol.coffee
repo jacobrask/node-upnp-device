@@ -35,12 +35,12 @@ class DeviceControlProtocol extends EventEmitter
 
 
   # URL generation.
-  makeUrl: (path) ->
+  makeUrl: (pathname) ->
     url.format
       protocol: 'http'
       hostname: @address ? @device.address
       port: @httpPort ? @device.httpPort
-      pathname: path
+      pathname: pathname
 
 
 module.exports = DeviceControlProtocol
