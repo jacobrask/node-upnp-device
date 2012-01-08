@@ -1,5 +1,3 @@
-# vim: ts=2 sw=2 sts=2
-
 assert = require 'assert'
 dgram = require 'dgram'
 upnp = require '../index'
