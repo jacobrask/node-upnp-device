@@ -13,6 +13,7 @@ os = require 'os'
 makeUuid = require 'node-uuid'
 xml = require 'xml'
 
+{ HttpError } = require '../errors'
 _ = require '../utils'
 
 # Require all currently implemented services, later added to devices with
@@ -35,8 +36,6 @@ class Device extends DeviceControlProtocol
     @address = address if address?
     # Socket for listening and sending messages on SSDP broadcast address.
     @broadcastSocket = dgram.createSocket 'udp4', @ssdpListener
-    @broadcastSocket.setMulticastTTL @ssdp.ttl
-    @broadcastSocket.addMembership @ssdp.address
     @init()
 
 
@@ -62,6 +61,8 @@ class Device extends DeviceControlProtocol
         @address = res.address
         @httpPort = res.port
         @broadcastSocket.bind @ssdp.port
+        @broadcastSocket.addMembership @ssdp.address
+        @broadcastSocket.setMulticastTTL @ssdp.ttl
         @addServices()
         @ssdpAnnounce()
         console.log "Web server listening on http://#{@address}:#{@httpPort}"
@@ -134,6 +135,7 @@ class Device extends DeviceControlProtocol
     # `http.parsers` is not documented and not guaranteed to be stable.
     parser = http.parsers.alloc()
     parser.reinitialize 'request'
+    parser.socket = {}
     parser.onIncoming = (req) ->
       http.parsers.free parser
       { method, headers: { mx, st, nt, nts, usn } } = req
@@ -241,9 +243,9 @@ class Device extends DeviceControlProtocol
   ssdpSend: (messages, address, port) ->
     @ssdpMessages.push { messages, address, port }
 
-  ssdpMessages: _.async.queue (task, queueCb) =>
+  ssdpMessages: _.async.queue (task, queueCb) ->
     { messages, address, port } = task
-    socket = dgram.createSocket('udp4')
+    socket = dgram.createSocket 'udp4'
     socket.bind()
     _.async.forEach messages,
       (msg, cb) -> socket.send msg, 0, msg.length, port, address, cb

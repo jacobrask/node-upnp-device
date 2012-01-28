@@ -8,7 +8,7 @@
   "bugs": "https://github.com/jacobrask/node-upnp-device/issues",
   "main": "./index",
   "directories": { "lib": "./lib" },
-  "engines": { "node": "<= 0.4.12" },
+  "engines": { "node": "<= 0.4.12 || >=0.6.9" },
   "dependencies": {
     "async": "*",
     "coffee-script": "1.1.3",

@@ -6,16 +6,14 @@ upnp-device lets you create [UPnP Devices][upnp-dcp] in Node.js. The goal is to 
 # Limitations
 
 * Only implemented device specification is MediaServer:1
-* MediaServer can only serve media from local file system
-* And more...
+* Only tested with audio
 
 
 # Install
 
 `npm install upnp-device`
 
-Note that you need Node 0.4.12. upnp-device is ___not___ compatible with Node 0.6.x due to some missing UDP features in 0.6.x. They are expected to be implemented fairly soon, and then upnp-device will be ported to 0.6.x.
-
+You also need to install Redis, preferrably using your system package manager.
 
 # Documentation
 
