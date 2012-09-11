@@ -1,3 +1,7 @@
+# THIS MODULE IS NO LONGER MAINTAINED
+
+**It also seems like it might not work with Node v0.8.x.**
+
 # UPnP Devices for Node.js
 
 upnp-device lets you create [UPnP Devices][upnp-dcp] in Node.js. The goal is to have an easy to use API, rather than exposing all UPnP internals.
