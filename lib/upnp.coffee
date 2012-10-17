@@ -7,8 +7,9 @@
 # Require all currently implemented devices.
 #
 # * [`MediaServer`](MediaServer.html)
-devices = mediaserver: require './devices/MediaServer'
-
+devices = 
+    mediaserver: require './devices/MediaServer'
+    binarylight: require './devices/BinaryLight'
 
 # Returns a device which will emit the `ready` event when asynchronous
 # initialization operations finishes.

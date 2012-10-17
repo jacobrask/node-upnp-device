@@ -7,7 +7,7 @@
 fs = require 'fs'
 http = require 'http'
 url = require 'url'
-uuid = require 'node-uuid'
+gen_uuid = require 'node-uuid'
 xml = require 'xml'
 { Parser: XmlParser } = require 'xml2js'
 
@@ -36,7 +36,7 @@ class Service extends DeviceControlProtocol
   # Control action. Most actions build a SOAP response and calls back.
   action: (action, data, cb) ->
     (new XmlParser).parseString data, (err, data) =>
-      @actionHandler action, data['s:Body']["u:#{action}"], cb
+      @actionHandler action, data['s:Envelope']['s:Body'][0]["u:#{action}"][0], cb
 
 
   # Create model attribute getter/setter property.
@@ -51,7 +51,7 @@ class Service extends DeviceControlProtocol
 
   # Event subscriptions.
   subscribe: (urls, reqTimeout) ->
-    sid = "uuid:#{uuid()}"
+    sid = "uuid:#{gen_uuid()}"
     (@subs?={})[sid] = new Subscription sid, urls, @
     timeout = @subs[sid].selfDestruct reqTimeout
     { sid, timeout: "Second-#{timeout}" }

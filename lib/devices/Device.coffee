@@ -22,8 +22,9 @@ _ = require '../utils'
 # * [`ConnectionManager`](ConnectionManager.html)
 # * [`ContentDirectory`](ContentDirectory.html)
 services =
-  ConnectionManager: require '../services/ConnectionManager'
-  ContentDirectory:  require '../services/ContentDirectory'
+  ConnectionManager:   require '../services/ConnectionManager'
+  ContentDirectory:    require '../services/ContentDirectory'
+  SwitchPower:         require '../services/SwitchPower'
 
 # `Device` extends [`DeviceControlProtocol`](DeviceControlProtocol.html) with
 # properties and methods common to devices and services.
