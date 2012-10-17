@@ -16,6 +16,10 @@ class MediaServer extends Device
 
   serviceTypes: [ 'ConnectionManager', 'ContentDirectory' ]
 
+  serviceReferences:
+      ConnectionManager:   require '../services/ConnectionManager'
+      ContentDirectory:    require '../services/ContentDirectory'
+
   type: 'MediaServer'
   version: 1
 
