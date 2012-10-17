@@ -33,6 +33,7 @@ class ContentDirectory extends Service
 
   # ## Static service properties.
   type: 'ContentDirectory'
+  serviceDescription: __dirname + '/ContentDirectory.xml'
 
   # Optional actions not (yet) implemented.
   optionalActions: [ 'Search', 'CreateObject', 'DestroyObject', 'UpdateObject',

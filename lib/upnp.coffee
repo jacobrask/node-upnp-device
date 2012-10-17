@@ -7,6 +7,7 @@
 # Require all currently implemented devices.
 #
 # * [`MediaServer`](MediaServer.html)
+# * [`BinaryLight`](BinaryLight.html)
 devices = 
     mediaserver: require './devices/MediaServer'
     binarylight: require './devices/BinaryLight'
@@ -22,3 +23,12 @@ exports.createDevice = (deviceType, name, address) ->
     return device
 
   new devices[type] name, address
+
+# Returns a device which will emit the `ready` event when asynchronous
+# initialization operations finishes.
+exports.createMyOwnDevice = (deviceImplementation, name, address) ->
+  new deviceImplementation name, address
+
+exports.Device = require './devices/Device'
+
+exports.Service = require './services/Service'

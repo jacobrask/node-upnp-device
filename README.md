@@ -53,6 +53,24 @@ Emitted when the server has been assigned an IP, the HTTP server has started and
 
 `function(err) { }`
 
+### upnp.createMyOwnDevice(implementation, name[, address])
+
+Create an instance of your own device implementation. Check the examples on how to create your own devices and services.
+
+* implementation - A implementation of a device specified by the [UPnP Forum][upnp-dcp]
+* name - The name of the device as it shows up in the network.
+* address - Optional IP address to bind server to.
+
+```
+var myDevice = require('./MyDevice')
+
+var device = upnp.createMyOwnDevice(myDevice, 'My Device');
+
+device.on('ready', function() {
+    device.ssdpAnnounce();
+});
+```
+
 ### upnp.createDevice(type, name[, address])
 
 * type - A device specified by the [UPnP Forum][upnp-dcp].

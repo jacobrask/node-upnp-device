@@ -16,16 +16,6 @@ xml = require 'xml'
 { HttpError } = require '../errors'
 _ = require '../utils'
 
-# Require all currently implemented services, later added to devices with
-# `addServices` method.
-#
-# * [`ConnectionManager`](ConnectionManager.html)
-# * [`ContentDirectory`](ContentDirectory.html)
-services =
-  ConnectionManager:   require '../services/ConnectionManager'
-  ContentDirectory:    require '../services/ContentDirectory'
-  SwitchPower:         require '../services/SwitchPower'
-
 # `Device` extends [`DeviceControlProtocol`](DeviceControlProtocol.html) with
 # properties and methods common to devices and services.
 DeviceControlProtocol = require '../DeviceControlProtocol'
@@ -74,7 +64,7 @@ class Device extends DeviceControlProtocol
   addServices: ->
     @services = {}
     for serviceType in @serviceTypes
-      @services[serviceType] = new services[serviceType] @
+      @services[serviceType] = new @serviceReferences[serviceType] @
 
 
   # Generate HTTP headers from `customHeaders` object.

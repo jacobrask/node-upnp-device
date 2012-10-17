@@ -5,21 +5,19 @@
 
 "use strict"
 
-_ = require '../utils'
-
 # Extends generic [`Device`](Device.html) class.
-Device = require './Device'
+UPNP = require 'upnp-device'
 
-class BinaryLight extends Device
+class MyDevice extends UPNP.Device
 
   constructor: -> super
 
-  serviceTypes: [ 'SwitchPower' ]
+  serviceTypes: [ 'MyService' ]
 
   serviceReferences:
-      SwitchPower: require '../services/SwitchPower'
+      MyService: require './MyService'
 
-  type: 'BinaryLight'
+  type: 'MyDevice'
   version: 1
 
-module.exports = BinaryLight
+module.exports = MyDevice

@@ -164,7 +164,7 @@ class Service extends DeviceControlProtocol
     switch action
       when 'description'
         # Service descriptions are static files.
-        fs.readFile("#{__dirname}/#{@type}.xml", 'utf8', (err, file) ->
+        fs.readFile("#{@serviceDescription}", 'utf8', (err, file) ->
           cb (if err? then new HttpError 500 else null), file)
 
       when 'control'

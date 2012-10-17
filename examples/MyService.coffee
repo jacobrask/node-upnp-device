@@ -1,14 +1,9 @@
-# Implements [SwitchPower:1] [1] service for [BinaryLight] [2] devices.
-#
-# [1]: http://upnp.org/specs/ha/lighting/
-# [2]: BinaryLight.html
-
 "use strict"
 
 # Extends generic [`Service`](Service.html) class.
-Service = require './Service'
+UPNP = require 'upnp-device'
 
-class SwitchPower extends Service
+class MyService extends UPNP.Service
 
   constructor: ->
     @_stateVars =
@@ -18,8 +13,8 @@ class SwitchPower extends Service
 
 
   # ## Static service properties.
-  type: 'SwitchPower'
-  serviceDescription: __dirname + '/SwitchPower.xml'
+  type: 'MyService'
+  serviceDescription: __dirname + '/MyService.xml'
 
   # State variable actions and associated XML element names.
   stateActions:
@@ -43,4 +38,4 @@ class SwitchPower extends Service
     cb null, @buildSoapResponse 'SetTarget',
       Source: @stateVars.Target, Sink: ''
 
-module.exports = SwitchPower
+module.exports = MyService
