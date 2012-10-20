@@ -20,6 +20,7 @@ class ConnectionManager extends Service
 
   # ## Static service properties.
   type: 'ConnectionManager'
+  serviceDescription: __dirname + '/ConnectionManager.xml'
 
   # Optional actions not (yet) implemented.
   optionalActions: [ 'PrepareForConnection', 'ConnectionComplete' ]
