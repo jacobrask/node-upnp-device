@@ -1,7 +1,3 @@
-# THIS MODULE IS NO LONGER MAINTAINED
-
-**It also seems like it might not work with Node v0.8.x.**
-
 # UPnP Devices for Node.js
 
 upnp-device lets you create [UPnP Devices][upnp-dcp] in Node.js. The goal is to have an easy to use API, rather than exposing all UPnP internals.
@@ -53,7 +49,7 @@ Emitted when the server has been assigned an IP, the HTTP server has started and
 
 `function(err) { }`
 
-### upnp.createMyOwnDevice(implementation, name[, address])
+### upnp.createMyDevice(device, name[, address])
 
 Create an instance of your own device implementation. Check the examples on how to create your own devices and services.
 

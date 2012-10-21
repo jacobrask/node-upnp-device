@@ -26,7 +26,7 @@ exports.createDevice = (deviceType, name, address) ->
 
 # Returns a device which will emit the `ready` event when asynchronous
 # initialization operations finishes.
-exports.createMyOwnDevice = (deviceImplementation, name, address) ->
+exports.createMyDevice = (deviceImplementation, name, address) ->
   new deviceImplementation name, address
 
 exports.Device = require './devices/Device'
