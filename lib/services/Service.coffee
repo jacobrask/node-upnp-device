@@ -164,8 +164,7 @@ class Service extends DeviceControlProtocol
     switch action
       when 'description'
         # Service descriptions are static files.
-        fs.readFile("#{@serviceDescription}", 'utf8', (err, file) ->
-          cb (if err? then new HttpError 500 else null), file)
+        cb null, fs.readFileSync("#{@serviceDescription}", 'utf8')
 
       when 'control'
         serviceAction = /:\d#(\w+)"$/.exec(req.headers.soapaction)?[1]
