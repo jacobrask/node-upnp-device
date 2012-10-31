@@ -2,12 +2,10 @@
 
 upnp-device lets you create [UPnP Devices][upnp-dcp] in Node.js. The goal is to have an easy to use API, rather than exposing all UPnP internals.
 
-
 # Limitations
 
-* Only implemented device specification is MediaServer:1
-* Only tested with audio
-
+* 2 implemented device specification included: MediaServer:1 and BinaryLight:1
+* MediaServer has only been tested with audio
 
 # Install
 
