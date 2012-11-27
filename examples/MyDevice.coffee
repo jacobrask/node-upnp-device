@@ -6,7 +6,7 @@
 "use strict"
 
 # Extends generic [`Device`](Device.html) class.
-UPNP = require 'upnp-device'
+UPNP = require '../index.js'
 
 class MyDevice extends UPNP.Device
 
