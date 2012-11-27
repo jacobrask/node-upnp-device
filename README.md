@@ -11,7 +11,7 @@ upnp-device lets you create [UPnP Devices][upnp-dcp] in Node.js. The goal is to 
 
 `npm install upnp-device`
 
-You also need to install Redis, preferrably using your system package manager.
+In case you want to use the built in media server you also need to install Redis, preferrably using your system package manager.
 
 # Documentation
 
