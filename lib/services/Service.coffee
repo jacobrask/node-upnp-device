@@ -140,6 +140,7 @@ class Service extends DeviceControlProtocol
         method: 'NOTIFY'
         path: u.pathname
         headers: @device.makeHeaders headers
+        agent: false
       req = http.request options
       req.on 'error', (err) ->
         console.log "#{eventUrl} - #{err.message}"
