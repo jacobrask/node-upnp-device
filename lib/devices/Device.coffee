@@ -284,6 +284,7 @@ class Device extends DeviceControlProtocol
         @ssdpBroadcast('alive')
         announce()
       , makeTimeout()
-
-
+    announce()
+    
+    
 module.exports = Device
