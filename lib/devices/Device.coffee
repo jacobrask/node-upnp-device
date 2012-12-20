@@ -5,7 +5,6 @@
 
 "use strict"
 
-{exec} = require 'child_process'
 dgram = require 'dgram'
 fs = require 'fs'
 http = require 'http'
@@ -148,19 +147,14 @@ class Device extends DeviceControlProtocol
       cb null, uuid
 
 
-  # Get the server's internal network IP to send out URL in SSDP messages.
-  # Only works on Linux and Mac.
+  # Guesses the server's internal network IP to send out URL in SSDP messages.
   getNetworkIP: (cb) ->
-    exec 'ifconfig', (err, stdout) ->
-      switch process.platform
-        when 'darwin' then filterRE = /\binet\s+([^\s]+)/g
-        when 'linux'  then filterRE = /\binet\b[^:]+:\s*([^\s]+)/g
-        else return cb new Error "Can't get IP address on this platform."
-      isLocal = (address) -> /(127\.0\.0\.1|::1|fe80(:1)?::1(%.*)?)$/i.test address
-      matches = stdout.match(filterRE) or ''
-      [ip] = (match.replace(filterRE, '$1') for match in matches when !isLocal match)
-      err = if ip? then null else new Error "IP address could not be retrieved."
-      cb err, ip
+    interfaces = os.networkInterfaces() or ''
+    ip = null
+    isLocal = (address) -> /(127\.0\.0\.1|::1|fe80(:1)?::1(%.*)?)$/i.test address
+    ((ip = config.address) for config in info when config.family == 'IPv4' and !isLocal config.address) for name, info of interfaces
+    err = if ip? then null else new Error "IP address could not be retrieved."
+    cb err, ip
 
 
   # Build device description XML document.
