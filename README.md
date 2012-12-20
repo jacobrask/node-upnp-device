@@ -53,7 +53,7 @@ Create an instance of your own device implementation. Check the examples on how 
 
 * implementation - A implementation of a device specified by the [UPnP Forum][upnp-dcp]
 * name - The name of the device as it shows up in the network.
-* address - Optional IP address to bind server to.
+* address - Optional IP address to bind server to. If the address is omitted an IPv4 address will guessed using the IP configuration
 
 ```
 var myDevice = require('./MyDevice')
@@ -69,7 +69,7 @@ device.on('ready', function() {
 
 * type - A device specified by the [UPnP Forum][upnp-dcp].
 * name - The name of the device as it shows up in the network.
-* address - Optional IP address to bind server to.
+* address - Optional IP address to bind server to. If the address is omitted an IPv4 address will guessed using the IP configuration
 
 ### device.addMedia(parentID, media[, callback])
 
