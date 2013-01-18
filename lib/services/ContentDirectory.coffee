@@ -137,8 +137,8 @@ class ContentDirectory extends Service
       # Increment each time container (or parent container) is modified.
       @redis.incr "#{if object.type is 'container' then id else parentID}:updateid"
       # Add ID's to item data structure and insert into data store.
-      object.id = id
-      object.parentid = parentID
+      object.id = "#{id}"
+      object.parentid = "#{parentID}"
       @redis.hmset "#{id}", object
       cb err, id
 
