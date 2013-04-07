@@ -50,13 +50,13 @@ class Device extends DeviceControlProtocol
         @uuid = "uuid:#{res.uuid}"
         @address = res.address
         @httpPort = res.port
-        @broadcastSocket.bind @ssdp.port
-        @broadcastSocket.addMembership @ssdp.address
-        @broadcastSocket.setMulticastTTL @ssdp.ttl
-        @addServices()
-        @ssdpAnnounce()
-        console.log "Web server listening on http://#{@address}:#{@httpPort}"
-        @emit 'ready'
+        @broadcastSocket.bind @ssdp.port,'0.0.0.0', =>
+          @broadcastSocket.addMembership @ssdp.address
+          @broadcastSocket.setMulticastTTL @ssdp.ttl
+          @addServices()
+          @ssdpAnnounce()
+          console.log "Web server listening on http://#{@address}:#{@httpPort}"
+          @emit 'ready'
 
 
   # When HTTP and SSDP servers are started, we add and initialize services.
