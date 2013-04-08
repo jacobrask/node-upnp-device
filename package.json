@@ -1,6 +1,6 @@
 {
   "name": "upnp-device",
-  "version": "0.1.2-SNAPSHOT",
+  "version": "0.1.3",
   "description": "Create UPnP devices in Node.js",
   "keywords": [ "upnp" ],
   "author": { "name": "Jacob Rask", "email": "jacob@jacobrask.net" },
@@ -8,7 +8,7 @@
   "bugs": "https://github.com/jacobrask/node-upnp-device/issues",
   "main": "./index",
   "directories": { "lib": "./lib" },
-  "engines": { "node": ">=0.8.8" },
+  "engines": { "node": ">=0.10.0" },
   "dependencies": {
     "async": "*",
     "coffee-script": "1.1.3",
@@ -27,5 +27,5 @@
     "type": "git",
     "url": "git://github.com/jacobrask/node-upnp-device.git"
   },
-  "contributors": ["Eelco Cramer"]
+  "contributors": ["Eelco Cramer", "Andrew Heuermann"]
 }
