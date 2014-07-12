@@ -9,7 +9,7 @@ http = require 'http'
 url = require 'url'
 gen_uuid = require 'node-uuid'
 xml = require 'xml'
-{ Parser: XmlParser } = require 'xml2js'
+{ processors, Parser: XmlParser } = require 'xml2js'
 
 { HttpError, SoapError } = require '../errors'
 _ = require '../utils'
@@ -35,8 +35,8 @@ class Service extends DeviceControlProtocol
 
   # Control action. Most actions build a SOAP response and calls back.
   action: (action, data, cb) ->
-    (new XmlParser).parseString data, (err, data) =>
-      @actionHandler action, data['s:Envelope']['s:Body'][0]["u:#{action}"][0], cb
+    (new XmlParser {"tagNameProcessors":[processors.stripPrefix]}).parseString data, (err, data) =>
+      @actionHandler action, data['Envelope']['Body'][0]["#{action}"][0], cb
 
 
   # Create model attribute getter/setter property.
