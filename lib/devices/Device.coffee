@@ -123,8 +123,10 @@ class Device extends DeviceControlProtocol
   # Parse SSDP headers using the HTTP module parser.
   parseRequest: (msg, rinfo, cb) ->
     # `http.parsers` is not documented and not guaranteed to be stable.
-    parser = http.parsers.alloc()
-    parser.reinitialize 'request'
+    #parser = http.parsers.alloc()
+    HTTPParser = process.binding('http_parser').HTTPParser
+    parser = new HTTPParser 'request'
+    #parser.reinitialize 'request'
     parser.socket = {}
     parser.onIncoming = (req) ->
       http.parsers.free parser
