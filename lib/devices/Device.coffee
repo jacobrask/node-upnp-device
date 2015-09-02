@@ -253,7 +253,7 @@ class Device extends DeviceControlProtocol
       setTimeout answer, wait, address, port
 
     respondTo = [ 'ssdp:all', 'upnp:rootdevice', @makeType(), @uuid ]
-    @parseRequest msg, rinfo, (err, req) ->
+    @parseRequest msg.toString(), rinfo, (err, req) ->
       if req.method is 'M-SEARCH' and req.st in respondTo
         answerAfter req.mx, req.address, req.port
 
