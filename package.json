@@ -17,7 +17,8 @@
     "redis": "*",
     "underscore": "*",
     "xml": "*",
-    "xml2js": "*"
+    "xml2js": "*",
+    "http-string-parser": "*"
   },
   "license": "MIT",
   "repository": {
