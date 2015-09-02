@@ -124,9 +124,17 @@ class Device extends DeviceControlProtocol
   # Parse SSDP headers using the HTTP module parser.
   parseRequest: (msg, rinfo, cb) ->
     req = parser.parseRequest(msg)
-    { method, headers: { mx, st, nt, nts, usn } } = req
+    { method, headers } = req
+    mx = null
+    st = null
+    for header of headers
+      switch header.toLowerCase()
+        when 'mx'
+          mx = headers[header]
+        when 'st'
+          st = headers[header]
     { address, port } = rinfo
-    cb null, { method, mx, st, nt, nts, usn, address, port }
+    cb null, { method, mx, st, address, port }
 
 
   # Attempt UUID persistance of devices across restarts.
