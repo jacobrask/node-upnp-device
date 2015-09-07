@@ -1,6 +1,6 @@
 {
   "name": "upnp-device",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Create UPnP devices in Node.js",
   "keywords": [ "upnp" ],
   "author": { "name": "Jacob Rask", "email": "jacob@jacobrask.net" },
@@ -17,7 +17,8 @@
     "redis": "*",
     "underscore": "*",
     "xml": "*",
-    "xml2js": "*"
+    "xml2js": "*",
+    "http-string-parser": "*"
   },
   "license": "MIT",
   "repository": {

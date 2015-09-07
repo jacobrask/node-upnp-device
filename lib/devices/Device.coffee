@@ -11,6 +11,7 @@ http = require 'http'
 os = require 'os'
 makeUuid = require 'node-uuid'
 xml = require 'xml'
+parser = require 'http-string-parser';
 
 { HttpError } = require '../errors'
 _ = require '../utils'
@@ -122,18 +123,18 @@ class Device extends DeviceControlProtocol
 
   # Parse SSDP headers using the HTTP module parser.
   parseRequest: (msg, rinfo, cb) ->
-    # `http.parsers` is not documented and not guaranteed to be stable.
-    #parser = http.parsers.alloc()
-    HTTPParser = process.binding('http_parser').HTTPParser
-    parser = new HTTPParser 'request'
-    #parser.reinitialize 'request'
-    parser.socket = {}
-    parser.onIncoming = (req) ->
-      http.parsers.free parser
-      { method, headers: { mx, st, nt, nts, usn } } = req
-      { address, port } = rinfo
-      cb null, { method, mx, st, nt, nts, usn, address, port }
-    parser.execute msg, 0, msg.length
+    req = parser.parseRequest(msg)
+    { method, headers } = req
+    mx = null
+    st = null
+    for header of headers
+      switch header.toLowerCase()
+        when 'mx'
+          mx = headers[header]
+        when 'st'
+          st = headers[header]
+    { address, port } = rinfo
+    cb null, { method, mx, st, address, port }
 
 
   # Attempt UUID persistance of devices across restarts.
@@ -260,7 +261,7 @@ class Device extends DeviceControlProtocol
       setTimeout answer, wait, address, port
 
     respondTo = [ 'ssdp:all', 'upnp:rootdevice', @makeType(), @uuid ]
-    @parseRequest msg, rinfo, (err, req) ->
+    @parseRequest msg.toString(), rinfo, (err, req) ->
       if req.method is 'M-SEARCH' and req.st in respondTo
         answerAfter req.mx, req.address, req.port
 
@@ -281,6 +282,6 @@ class Device extends DeviceControlProtocol
         announce()
       , makeTimeout()
     announce()
-    
-    
+
+
 module.exports = Device
