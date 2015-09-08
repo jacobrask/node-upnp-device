@@ -51,7 +51,7 @@ class Device extends DeviceControlProtocol
         @uuid = "uuid:#{res.uuid}"
         @address = res.address
         @httpPort = res.port
-        @broadcastSocket.bind @ssdp.port,'0.0.0.0', =>
+        @broadcastSocket.bind @ssdp.port,@address, =>
           @broadcastSocket.addMembership @ssdp.address
           @broadcastSocket.setMulticastTTL @ssdp.ttl
           @addServices()
