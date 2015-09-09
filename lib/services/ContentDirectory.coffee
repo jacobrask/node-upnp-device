@@ -194,6 +194,7 @@ class ContentDirectory extends Service
   fetchObject: (id, cb) ->
     @redis.hgetall id, (err, object) ->
       return cb new SoapError 501 if err?
+      return cb new SoapError 701 unless object
       return cb new SoapError 701 unless Object.keys(object).length > 0
       cb null, object
 
