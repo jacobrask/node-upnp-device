@@ -56,7 +56,7 @@ class ContentDirectory extends Service
         browseCallback = (err, resp) =>
           cb null, (if err? then @buildSoapError(err) else resp)
 
-        switch options?.BrowseFlag
+        switch options?.BrowseFlag?.toString()
           when 'BrowseMetadata'
             @browseMetadata options, browseCallback
           when 'BrowseDirectChildren'
