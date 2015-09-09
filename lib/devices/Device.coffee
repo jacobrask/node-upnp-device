@@ -11,7 +11,7 @@ http = require 'http'
 os = require 'os'
 makeUuid = require 'node-uuid'
 xml = require 'xml'
-parser = require 'http-string-parser';
+parser = require 'http-string-parser'
 
 { HttpError } = require '../errors'
 _ = require '../utils'
@@ -41,7 +41,7 @@ class Device extends DeviceControlProtocol
   # Asynchronous operations to get and set some device properties.
   init: (cb) ->
     _.async.parallel
-      address: (cb) => if @address? then cb null, @address else @getNetworkIP cb
+      address: (cb) => if @address? then cb null, @address else cb null, '0.0.0.0'
       uuid: (cb) => @getUuid cb
       port: (cb) =>
         @httpServer = http.createServer(@httpListener)
@@ -51,7 +51,7 @@ class Device extends DeviceControlProtocol
         @uuid = "uuid:#{res.uuid}"
         @address = res.address
         @httpPort = res.port
-        @broadcastSocket.bind @ssdp.port,@address, =>
+        @broadcastSocket.bind @ssdp.port, @address, =>
           @broadcastSocket.addMembership @ssdp.address
           @broadcastSocket.setMulticastTTL @ssdp.ttl
           @addServices()
@@ -148,16 +148,6 @@ class Device extends DeviceControlProtocol
         fs.writeFile uuidFile, JSON.stringify data
       # Always call back with UUID, existing or new.
       cb null, uuid
-
-
-  # Guesses the server's internal network IP to send out URL in SSDP messages.
-  getNetworkIP: (cb) ->
-    interfaces = os.networkInterfaces() or ''
-    ip = null
-    isLocal = (address) -> /(127\.0\.0\.1|::1|fe80(:1)?::1(%.*)?)$/i.test address
-    ((ip = config.address) for config in info when config.family == 'IPv4' and !isLocal config.address) for name, info of interfaces
-    err = if ip? then null else new Error "IP address could not be retrieved."
-    cb err, ip
 
 
   # Build device description XML document.
