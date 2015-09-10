@@ -1,6 +1,6 @@
 {
   "name": "upnp-device",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Create UPnP devices in Node.js",
   "keywords": [ "upnp" ],
   "author": { "name": "Jacob Rask", "email": "jacob@jacobrask.net" },
