@@ -45,13 +45,13 @@ class Device extends DeviceControlProtocol
       uuid: (cb) => @getUuid cb
       port: (cb) =>
         @httpServer = http.createServer(@httpListener)
-        @httpServer.listen (err) -> cb err, @address().port
+        @httpServer.listen 0, @address, (err) -> cb err, @address().port
       (err, res) =>
         return @emit 'error', err if err?
         @uuid = "uuid:#{res.uuid}"
         @address = res.address
         @httpPort = res.port
-        @broadcastSocket.bind @ssdp.port, @address, =>
+        @broadcastSocket.bind @ssdp.port, @ssdp.address, =>
           @broadcastSocket.addMembership @ssdp.address
           @broadcastSocket.setMulticastTTL @ssdp.ttl
           @addServices()
