@@ -158,8 +158,8 @@ class Device extends DeviceControlProtocol
                        { minor: @upnp.version[1] } ] }
       { device: [
         { deviceType: @makeType() }
-        { friendlyName: "#{@name} @ #{os.hostname()}".substr(0, 64) }
-        { manufacturer: 'UPnP Device for Node.js' }
+        { friendlyName: @friendlyName ? "#{@name} @ #{os.hostname()}".substr(0, 64) }
+        { manufacturer: @manufacturer ? 'UPnP Device for Node.js' }
         { modelName: @name.substr(0, 32) }
         { UDN: @uuid }
         { serviceList:
