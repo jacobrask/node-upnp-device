@@ -17,7 +17,9 @@ class MyDevice extends UPNP.Device
   serviceReferences:
       MyService: require './MyService'
 
-  type: 'MyDevice'
-  version: 1
+  type: 'MyDevice' # The type of device, this is a required!
+  version: 1 # The version number of the device, default value is 1.
+  manufacturer: 'MyManufacturer' # The manufacturer of the device, default value is 'UPnP Device for Node.js'.
+  friendlyName: 'MyDeviceFriendlyName' # The friendly name of the device, default value is the name supplied to createMyDevice plus hostname.
 
 module.exports = MyDevice
